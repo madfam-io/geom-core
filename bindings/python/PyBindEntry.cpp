@@ -7,6 +7,26 @@ namespace py = pybind11;
 PYBIND11_MODULE(geom_core_py, m) {
     m.doc() = "geom-core: High-performance geometry analysis library";
 
+    // PrintabilityReport struct
+    py::class_<madfam::geom::PrintabilityReport>(m, "PrintabilityReport")
+        .def(py::init<>())
+        .def_readwrite("overhang_area", &madfam::geom::PrintabilityReport::overhangArea,
+                      "Surface area requiring support (mm²)")
+        .def_readwrite("overhang_percentage", &madfam::geom::PrintabilityReport::overhangPercentage,
+                      "Percentage of total surface area that is overhang")
+        .def_readwrite("thin_wall_vertex_count", &madfam::geom::PrintabilityReport::thinWallVertexCount,
+                      "Number of vertices with walls too thin")
+        .def_readwrite("score", &madfam::geom::PrintabilityReport::score,
+                      "Overall printability score (0-100)")
+        .def_readwrite("total_surface_area", &madfam::geom::PrintabilityReport::totalSurfaceArea,
+                      "Total mesh surface area (mm²)")
+        .def("__repr__", [](const madfam::geom::PrintabilityReport& r) {
+            return "PrintabilityReport(score=" + std::to_string(r.score) +
+                   ", overhang_area=" + std::to_string(r.overhangArea) +
+                   " mm², overhang_percentage=" + std::to_string(r.overhangPercentage) +
+                   "%, thin_wall_vertices=" + std::to_string(r.thinWallVertexCount) + ")";
+        });
+
     // Vector3 class
     py::class_<madfam::geom::Vector3>(m, "Vector3")
         .def(py::init<>())
@@ -39,6 +59,14 @@ PYBIND11_MODULE(geom_core_py, m) {
              "Get number of vertices in the loaded mesh")
         .def("get_triangle_count", &madfam::geom::Analyzer::getTriangleCount,
              "Get number of triangles in the loaded mesh")
+
+        // Printability analysis (Milestone 4)
+        .def("build_spatial_index", &madfam::geom::Analyzer::buildSpatialIndex,
+             "Build spatial acceleration structure for ray queries (required for thickness analysis)")
+        .def("get_printability_report", &madfam::geom::Analyzer::getPrintabilityReport,
+             "Analyze printability for 3D printing",
+             py::arg("critical_angle_degrees") = 45.0,
+             py::arg("min_wall_thickness_mm") = 0.8)
 
         // Legacy methods (for backward compatibility)
         .def("load_data", &madfam::geom::Analyzer::loadData,

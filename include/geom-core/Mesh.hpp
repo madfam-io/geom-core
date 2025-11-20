@@ -85,6 +85,16 @@ public:
      */
     void clear();
 
+    /**
+     * @brief Get const reference to vertex array (for spatial indexing)
+     */
+    const std::vector<Vector3>& getVertices() const { return vertices; }
+
+    /**
+     * @brief Get const reference to face array (for spatial indexing)
+     */
+    const std::vector<Triangle>& getFaces() const { return faces; }
+
 private:
     std::vector<Vector3> vertices;
     std::vector<Triangle> faces;

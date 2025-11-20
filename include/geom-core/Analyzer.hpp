@@ -3,8 +3,28 @@
 #include <memory>
 #include "Mesh.hpp"
 #include "Vector3.hpp"
+#include "Spatial.hpp"
 
 namespace madfam::geom {
+
+    /**
+     * @brief Printability analysis report for 3D printing
+     */
+    struct PrintabilityReport {
+        double overhangArea;         // mm² of surface requiring support
+        double overhangPercentage;   // % of total surface area
+        int thinWallVertexCount;     // Number of vertices with walls too thin
+        double score;                // Overall printability score (0-100)
+        double totalSurfaceArea;     // Total mesh surface area (mm²)
+
+        PrintabilityReport()
+            : overhangArea(0.0)
+            , overhangPercentage(0.0)
+            , thinWallVertexCount(0)
+            , score(100.0)
+            , totalSurfaceArea(0.0) {}
+    };
+
     /**
      * @brief High-level geometry analysis interface
      *
@@ -66,6 +86,33 @@ namespace madfam::geom {
         size_t getTriangleCount() const;
 
         // ========================================
+        // Printability Analysis (Milestone 4)
+        // ========================================
+
+        /**
+         * @brief Build spatial acceleration structure for ray queries
+         *
+         * Call this after loading a mesh and before running printability analysis.
+         * Required for wall thickness checks.
+         */
+        void buildSpatialIndex();
+
+        /**
+         * @brief Analyze printability for 3D printing
+         *
+         * @param criticalAngleDegrees Overhang angle threshold (typically 45°)
+         * @param minWallThicknessMM Minimum wall thickness in mm (typically 0.8-2.0)
+         * @return Printability report with overhang and thickness analysis
+         *
+         * The score is calculated as:
+         * - Start at 100.0
+         * - Subtract (overhangPercentage * 0.5) for support requirements
+         * - Subtract (thinWallVertexCount / totalVertices * 50) for thin walls
+         */
+        PrintabilityReport getPrintabilityReport(double criticalAngleDegrees,
+                                                 double minWallThicknessMM);
+
+        // ========================================
         // Legacy Methods (for backward compatibility)
         // ========================================
 
@@ -88,5 +135,6 @@ namespace madfam::geom {
 
     private:
         std::unique_ptr<Mesh> mesh;
+        std::unique_ptr<AABBTree> spatialTree;
     };
 }

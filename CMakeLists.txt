@@ -16,6 +16,7 @@ option(BUILD_WASM_BINDINGS "Build WebAssembly bindings using Embind" OFF)
 add_library(geom_core_lib SHARED
     src/Analyzer.cpp
     src/Mesh.cpp
+    src/Spatial.cpp
 )
 
 target_include_directories(geom_core_lib
@@ -70,6 +71,7 @@ if(BUILD_WASM_BINDINGS)
     add_executable(geom_core_wasm
         src/Analyzer.cpp
         src/Mesh.cpp
+        src/Spatial.cpp
         bindings/wasm/WasmEntry.cpp
     )
 
