@@ -14,6 +14,7 @@ option(BUILD_PYTHON_BINDINGS "Build Python bindings using pybind11" ON)
 # ===========================
 add_library(geom_core_lib SHARED
     src/Analyzer.cpp
+    src/Mesh.cpp
 )
 
 target_include_directories(geom_core_lib
