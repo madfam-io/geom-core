@@ -28,6 +28,16 @@ namespace madfam::geom {
         bool loadSTL(const std::string& filepath);
 
         /**
+         * @brief Load a mesh from STL data in memory (for WASM)
+         * @param data Binary STL data as a string
+         * @return true if successful, false otherwise
+         *
+         * In JavaScript/WASM, you can pass a Uint8Array or binary string.
+         * Emscripten will automatically convert it to std::string.
+         */
+        bool loadSTLFromBytes(const std::string& data);
+
+        /**
          * @brief Calculate the volume of the loaded mesh
          * @return Volume in cubic units (0.0 if no mesh loaded)
          */

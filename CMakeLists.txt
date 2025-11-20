@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Build Options
 option(BUILD_PYTHON_BINDINGS "Build Python bindings using pybind11" ON)
+option(BUILD_WASM_BINDINGS "Build WebAssembly bindings using Embind" OFF)
 
 # ===========================
 # Core Library (geom_core_lib)
@@ -62,6 +63,44 @@ if(BUILD_PYTHON_BINDINGS)
 endif()
 
 # ===========================
+# WebAssembly Bindings
+# ===========================
+if(BUILD_WASM_BINDINGS)
+    # WASM build: create a standalone module
+    add_executable(geom_core_wasm
+        src/Analyzer.cpp
+        src/Mesh.cpp
+        bindings/wasm/WasmEntry.cpp
+    )
+
+    target_include_directories(geom_core_wasm
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+
+    # Emscripten linker flags
+    set_target_properties(geom_core_wasm PROPERTIES
+        LINK_FLAGS "\
+            -lembind \
+            -s MODULARIZE=1 \
+            -s EXPORT_NAME='GeomCore' \
+            -s ALLOW_MEMORY_GROWTH=1 \
+            -s EXPORTED_RUNTIME_METHODS=['ccall','cwrap'] \
+            -s ENVIRONMENT=web \
+            --bind"
+        OUTPUT_NAME "geom_core"
+        SUFFIX ".js"
+    )
+
+    # Set output directory
+    set_target_properties(geom_core_wasm PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/wasm"
+    )
+
+    message(STATUS "WebAssembly bindings enabled")
+endif()
+
+# ===========================
 # Summary
 # ===========================
 message(STATUS "")
@@ -72,5 +111,6 @@ message(STATUS "Version:              ${PROJECT_VERSION}")
 message(STATUS "C++ Standard:         ${CMAKE_CXX_STANDARD}")
 message(STATUS "Build Type:           ${CMAKE_BUILD_TYPE}")
 message(STATUS "Python Bindings:      ${BUILD_PYTHON_BINDINGS}")
+message(STATUS "WASM Bindings:        ${BUILD_WASM_BINDINGS}")
 message(STATUS "===================================")
 message(STATUS "")

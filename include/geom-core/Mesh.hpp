@@ -36,6 +36,17 @@ public:
     bool loadFromSTL(const std::string& filepath);
 
     /**
+     * @brief Load mesh from binary STL data in memory
+     * @param buffer Pointer to binary STL data
+     * @param size Size of the buffer in bytes
+     * @return true if successful, false otherwise
+     *
+     * Automatically deduplicates vertices to create a proper connected mesh.
+     * This method is used for WASM where there's no file system.
+     */
+    bool loadFromSTLBuffer(const char* buffer, size_t size);
+
+    /**
      * @brief Calculate the volume of the mesh using signed tetrahedron method
      * @return Volume in cubic units (mm³ if input is in mm)
      *

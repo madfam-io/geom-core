@@ -21,6 +21,13 @@ bool Analyzer::loadSTL(const std::string& filepath) {
     return mesh->loadFromSTL(filepath);
 }
 
+bool Analyzer::loadSTLFromBytes(const std::string& data) {
+    if (!mesh) {
+        mesh = std::make_unique<Mesh>();
+    }
+    return mesh->loadFromSTLBuffer(data.data(), data.size());
+}
+
 double Analyzer::getVolume() const {
     if (!mesh) return 0.0;
     return mesh->getVolume();

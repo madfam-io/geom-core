@@ -11,28 +11,52 @@
 namespace madfam::geom {
 
 bool Mesh::loadFromSTL(const std::string& filepath) {
-    std::ifstream file(filepath, std::ios::binary);
+    // Read entire file into memory
+    std::ifstream file(filepath, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
         std::cerr << "Error: Could not open STL file: " << filepath << std::endl;
         return false;
     }
 
-    // Clear existing data
-    clear();
+    // Get file size and read into buffer
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
 
-    // Read 80-byte header (ignore it)
-    char header[80];
-    file.read(header, 80);
-    if (!file.good()) {
-        std::cerr << "Error: Failed to read STL header" << std::endl;
+    std::vector<char> buffer(size);
+    if (!file.read(buffer.data(), size)) {
+        std::cerr << "Error: Failed to read STL file: " << filepath << std::endl;
         return false;
     }
 
+    file.close();
+
+    // Delegate to buffer-based loader
+    return loadFromSTLBuffer(buffer.data(), buffer.size());
+}
+
+bool Mesh::loadFromSTLBuffer(const char* buffer, size_t size) {
+    // Clear existing data
+    clear();
+
+    // Validate minimum size (80-byte header + 4-byte count)
+    if (size < 84) {
+        std::cerr << "Error: STL buffer too small (< 84 bytes)" << std::endl;
+        return false;
+    }
+
+    // Read 80-byte header (skip it)
+    size_t offset = 80;
+
     // Read triangle count (4 bytes, little-endian unsigned int)
     uint32_t triangleCount;
-    file.read(reinterpret_cast<char*>(&triangleCount), 4);
-    if (!file.good()) {
-        std::cerr << "Error: Failed to read triangle count" << std::endl;
+    std::memcpy(&triangleCount, buffer + offset, 4);
+    offset += 4;
+
+    // Validate buffer size
+    size_t expectedSize = 84 + (triangleCount * 50); // header + count + (triangles * 50 bytes each)
+    if (size < expectedSize) {
+        std::cerr << "Error: STL buffer size mismatch. Expected at least " << expectedSize
+                  << " bytes, got " << size << std::endl;
         return false;
     }
 
@@ -45,23 +69,21 @@ bool Mesh::loadFromSTL(const std::string& filepath) {
 
     // Read each triangle
     for (uint32_t i = 0; i < triangleCount; ++i) {
-        // Read normal vector (12 bytes) - we'll skip it
-        float normal[3];
-        file.read(reinterpret_cast<char*>(normal), 12);
-        if (!file.good()) {
-            std::cerr << "Error: Failed to read normal for triangle " << i << std::endl;
-            break;
+        // Check if we have enough data left
+        if (offset + 50 > size) {
+            std::cerr << "Error: Unexpected end of STL buffer at triangle " << i << std::endl;
+            return false;
         }
+
+        // Read normal vector (12 bytes) - we'll skip it
+        offset += 12;
 
         // Read 3 vertices (12 bytes each = 3 floats per vertex)
         int indices[3];
         for (int j = 0; j < 3; ++j) {
             float coords[3];
-            file.read(reinterpret_cast<char*>(coords), 12);
-            if (!file.good()) {
-                std::cerr << "Error: Failed to read vertex " << j << " of triangle " << i << std::endl;
-                break;
-            }
+            std::memcpy(coords, buffer + offset, 12);
+            offset += 12;
 
             Vector3 vertex(coords[0], coords[1], coords[2]);
 
@@ -83,15 +105,8 @@ bool Mesh::loadFromSTL(const std::string& filepath) {
         faces.emplace_back(indices[0], indices[1], indices[2]);
 
         // Read attribute byte count (2 bytes) - skip it
-        uint16_t attributeByteCount;
-        file.read(reinterpret_cast<char*>(&attributeByteCount), 2);
-        if (!file.good() && i < triangleCount - 1) {
-            std::cerr << "Error: Failed to read attribute count for triangle " << i << std::endl;
-            break;
-        }
+        offset += 2;
     }
-
-    file.close();
 
     std::cout << "Loaded STL: " << vertices.size() << " vertices, "
               << faces.size() << " triangles" << std::endl;
