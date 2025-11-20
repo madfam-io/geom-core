@@ -2,7 +2,7 @@
 #include <iostream>
 #include <cmath>
 
-namespace MadFam::Geom {
+namespace madfam::geom {
 
 bool Analyzer::loadData(const std::string& data) {
     std::cout << "Loading data: " << data << std::endl;
@@ -19,4 +19,4 @@ int Analyzer::add(int a, int b) {
     return a + b;
 }
 
-} // namespace MadFam::Geom
+} // namespace madfam::geom

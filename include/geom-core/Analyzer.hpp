@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-namespace MadFam::Geom {
+namespace madfam::geom {
     class Analyzer {
     public:
         Analyzer() = default;
