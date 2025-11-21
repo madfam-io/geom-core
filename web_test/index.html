@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>geom-core WASM Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .result {
+            background: #e7f3ff;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #2196F3;
+            font-family: 'Courier New', monospace;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        #log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin-top: 20px;
+        }
+        .log-entry {
+            padding: 3px 0;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔷 geom-core WebAssembly Test</h1>
+
+        <div id="status" class="status loading">
+            ⏳ Loading WebAssembly module...
+        </div>
+
+        <div id="results"></div>
+
+        <button id="testButton" onclick="runTests()" disabled>Run Tests</button>
+        <button onclick="clearLog()">Clear Log</button>
+
+        <h3>Console Log:</h3>
+        <div id="log"></div>
+    </div>
+
+    <script src="../build/wasm/wasm/geom_core.js"></script>
+    <script>
+        let Module = null;
+        const results = document.getElementById('results');
+        const status = document.getElementById('status');
+        const testButton = document.getElementById('testButton');
+        const logDiv = document.getElementById('log');
+
+        function log(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const timestamp = new Date().toLocaleTimeString();
+            entry.innerHTML = `<span style="color: #666">[${timestamp}]</span> ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLog() {
+            logDiv.innerHTML = '';
+        }
+
+        function createBinarySTLCube(size = 10.0) {
+            log('Generating binary STL cube...');
+            const half = size / 2.0;
+
+            // 8 vertices of a cube
+            const vertices = [
+                [-half, -half, -half], [half, -half, -half], [half, half, -half], [-half, half, -half],
+                [-half, -half, half], [half, -half, half], [half, half, half], [-half, half, half]
+            ];
+
+            // 12 triangles (6 faces × 2 triangles)
+            const triangles = [
+                [0, 2, 1], [0, 3, 2],  // Back
+                [4, 5, 6], [4, 6, 7],  // Front
+                [0, 4, 7], [0, 7, 3],  // Left
+                [1, 6, 5], [1, 2, 6],  // Right
+                [0, 1, 5], [0, 5, 4],  // Bottom
+                [3, 6, 2], [3, 7, 6]   // Top
+            ];
+
+            // Calculate buffer size
+            const headerSize = 80;
+            const countSize = 4;
+            const triangleSize = 50; // 12 (normal) + 36 (3 vertices) + 2 (attribute)
+            const totalSize = headerSize + countSize + (triangles.length * triangleSize);
+
+            const buffer = new ArrayBuffer(totalSize);
+            const view = new DataView(buffer);
+            let offset = 0;
+
+            // Write header (80 bytes)
+            const headerText = 'Binary STL cube for geom-core WASM test';
+            for (let i = 0; i < Math.min(headerText.length, 80); i++) {
+                view.setUint8(offset++, headerText.charCodeAt(i));
+            }
+            offset = 80;
+
+            // Write triangle count (4 bytes, little-endian)
+            view.setUint32(offset, triangles.length, true);
+            offset += 4;
+
+            // Write each triangle
+            triangles.forEach(tri => {
+                // Calculate normal
+                const v0 = vertices[tri[0]];
+                const v1 = vertices[tri[1]];
+                const v2 = vertices[tri[2]];
+
+                const edge1 = [v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]];
+                const edge2 = [v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]];
+
+                const normal = [
+                    edge1[1] * edge2[2] - edge1[2] * edge2[1],
+                    edge1[2] * edge2[0] - edge1[0] * edge2[2],
+                    edge1[0] * edge2[1] - edge1[1] * edge2[0]
+                ];
+
+                // Write normal (3 floats)
+                view.setFloat32(offset, normal[0], true); offset += 4;
+                view.setFloat32(offset, normal[1], true); offset += 4;
+                view.setFloat32(offset, normal[2], true); offset += 4;
+
+                // Write 3 vertices
+                [v0, v1, v2].forEach(v => {
+                    view.setFloat32(offset, v[0], true); offset += 4;
+                    view.setFloat32(offset, v[1], true); offset += 4;
+                    view.setFloat32(offset, v[2], true); offset += 4;
+                });
+
+                // Write attribute byte count (2 bytes)
+                view.setUint16(offset, 0, true);
+                offset += 2;
+            });
+
+            log(`✓ Generated STL cube: ${totalSize} bytes`);
+            return new Uint8Array(buffer);
+        }
+
+        function runTests() {
+            results.innerHTML = '';
+            log('Starting tests...');
+
+            try {
+                // Test 1: Create Analyzer
+                log('Test 1: Creating Analyzer instance...');
+                const analyzer = new Module.Analyzer();
+                addResult('✓ Analyzer created successfully');
+
+                // Test 2: Generate and load STL cube
+                log('Test 2: Loading STL cube...');
+                const cubeData = createBinarySTLCube(10.0);
+
+                // Convert Uint8Array to string for C++
+                let binaryString = '';
+                for (let i = 0; i < cubeData.length; i++) {
+                    binaryString += String.fromCharCode(cubeData[i]);
+                }
+
+                const loaded = analyzer.loadSTLFromBytes(binaryString);
+                if (!loaded) {
+                    throw new Error('Failed to load STL data');
+                }
+                addResult('✓ STL cube loaded successfully');
+
+                // Test 3: Get triangle and vertex counts
+                log('Test 3: Checking mesh statistics...');
+                const triangleCount = analyzer.getTriangleCount();
+                const vertexCount = analyzer.getVertexCount();
+                addResult(`✓ Triangles: ${triangleCount} (expected 12)`);
+                addResult(`✓ Vertices: ${vertexCount} (expected 8)`);
+
+                if (triangleCount !== 12) {
+                    throw new Error(`Triangle count mismatch: expected 12, got ${triangleCount}`);
+                }
+                if (vertexCount !== 8) {
+                    throw new Error(`Vertex count mismatch: expected 8, got ${vertexCount}`);
+                }
+
+                // Test 4: Calculate volume
+                log('Test 4: Calculating volume...');
+                const volume = analyzer.getVolume();
+                const expectedVolume = 1000.0; // 10³
+                const tolerance = expectedVolume * 0.01;
+                addResult(`✓ Volume: ${volume.toFixed(2)} mm³ (expected ${expectedVolume})`);
+
+                if (Math.abs(volume - expectedVolume) > tolerance) {
+                    throw new Error(`Volume mismatch: expected ${expectedVolume}, got ${volume}`);
+                }
+
+                // Test 5: Check watertight
+                log('Test 5: Checking watertight...');
+                const isWatertight = analyzer.isWatertight();
+                addResult(`✓ Watertight: ${isWatertight} (expected true)`);
+
+                if (!isWatertight) {
+                    throw new Error('Cube should be watertight!');
+                }
+
+                // Test 6: Get bounding box
+                log('Test 6: Getting bounding box...');
+                const bbox = analyzer.getBoundingBox();
+                addResult(`✓ Bounding Box: (${bbox.x.toFixed(2)}, ${bbox.y.toFixed(2)}, ${bbox.z.toFixed(2)})`);
+
+                // Clean up
+                analyzer.delete();
+                log('✓ Analyzer cleaned up');
+
+                // All tests passed!
+                status.className = 'status success';
+                status.innerHTML = '✅ All tests passed!';
+                log('═══════════════════════════════');
+                log('✅ ALL TESTS PASSED!');
+                log('═══════════════════════════════');
+
+            } catch (error) {
+                status.className = 'status error';
+                status.innerHTML = `❌ Error: ${error.message}`;
+                addResult(`❌ Error: ${error.message}`, 'error');
+                log(`❌ Test failed: ${error.message}`);
+                console.error(error);
+            }
+        }
+
+        function addResult(text, className = 'result') {
+            const div = document.createElement('div');
+            div.className = className;
+            div.textContent = text;
+            results.appendChild(div);
+        }
+
+        // Initialize WASM module
+        GeomCore().then(instance => {
+            Module = instance;
+            status.className = 'status success';
+            status.innerHTML = '✅ WebAssembly module loaded successfully!';
+            testButton.disabled = false;
+            log('✓ WASM module loaded successfully');
+            log('Ready to run tests!');
+        }).catch(error => {
+            status.className = 'status error';
+            status.innerHTML = `❌ Failed to load WASM module: ${error.message}`;
+            log(`❌ Failed to load WASM: ${error.message}`);
+            console.error('Failed to load WASM module:', error);
+        });
+    </script>
+</body>
+</html>

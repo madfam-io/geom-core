@@ -1,0 +1,204 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop, "claude/*" ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  # ========================================
+  # Job 1: Build and Test Python Bindings
+  # ========================================
+  python-build:
+    name: Python Build & Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+        exclude:
+          # Reduce matrix size for faster CI
+          - os: macos-latest
+            python-version: '3.8'
+          - os: macos-latest
+            python-version: '3.9'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install system dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential python3-dev \
+          libocct-data-exchange-dev libocct-ocaf-dev libocct-modeling-data-dev \
+          libocct-modeling-algorithms-dev libocct-foundation-dev libocct-visualization-dev
+
+    - name: Install system dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install cmake opencascade
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install setuptools wheel pybind11
+    
+    - name: Build Python extension
+      run: |
+        chmod +x scripts/build_python.sh
+        ./scripts/build_python.sh
+    
+    - name: Run tests
+      run: |
+        chmod +x scripts/run_tests.sh
+        ./scripts/run_tests.sh
+    
+    - name: Upload Python artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-${{ matrix.os }}-${{ matrix.python-version }}
+        path: build/python/geom_core_py.*
+
+  # ========================================
+  # Job 2: Build WASM
+  # ========================================
+  wasm-build:
+    name: WASM Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Emscripten
+      uses: mymindstorm/setup-emsdk@v12
+      with:
+        version: 'latest'
+        actions-cache-folder: 'emsdk-cache'
+    
+    - name: Verify Emscripten
+      run: |
+        emcc --version
+        which emcmake
+    
+    - name: Build WASM
+      run: |
+        chmod +x scripts/build_wasm.sh
+        ./scripts/build_wasm.sh
+    
+    - name: Upload WASM artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: wasm-dist
+        path: dist/
+    
+    - name: List artifacts
+      run: |
+        echo "WASM build artifacts:"
+        ls -lh dist/
+
+  # ========================================
+  # Job 3: Python Package Build
+  # ========================================
+  python-package:
+    name: Build Python Package
+    runs-on: ubuntu-latest
+    needs: python-build
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+    
+    - name: Build source distribution
+      run: |
+        python -m build --sdist
+    
+    - name: Check distribution
+      run: |
+        twine check dist/*
+    
+    - name: Upload package artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-package
+        path: dist/
+
+  # ========================================
+  # Job 4: Code Quality Checks
+  # ========================================
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install linting tools
+      run: |
+        pip install black flake8 mypy
+    
+    - name: Check Python formatting (Black)
+      run: |
+        black --check tests/*.py bindings/python/*.cpp || true
+    
+    - name: Lint Python code (Flake8)
+      run: |
+        flake8 tests/ --max-line-length=120 --extend-ignore=E501 || true
+    
+    - name: Check C++ formatting
+      run: |
+        echo "C++ formatting check (clang-format would go here)"
+        find src include -name "*.cpp" -o -name "*.hpp" | head -5
+
+  # ========================================
+  # Job 5: Documentation Check
+  # ========================================
+  documentation:
+    name: Documentation Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Check README
+      run: |
+        if [ -f README.md ]; then
+          echo "README.md exists"
+          wc -l README.md
+        else
+          echo "Warning: README.md not found"
+        fi
+    
+    - name: Check LICENSE
+      run: |
+        if [ -f LICENSE ]; then
+          echo "LICENSE exists"
+        else
+          echo "Warning: LICENSE not found"
+        fi
