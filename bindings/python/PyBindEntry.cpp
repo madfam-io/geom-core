@@ -27,6 +27,23 @@ PYBIND11_MODULE(geom_core_py, m) {
                    "%, thin_wall_vertices=" + std::to_string(r.thinWallVertexCount) + ")";
         });
 
+    // OrientationResult struct (Milestone 5)
+    py::class_<madfam::geom::OrientationResult>(m, "OrientationResult")
+        .def(py::init<>())
+        .def_readwrite("optimal_up_vector", &madfam::geom::OrientationResult::optimalUpVector,
+                      "The direction that should point 'Up' for optimal printing")
+        .def_readwrite("original_overhang_area", &madfam::geom::OrientationResult::originalOverhangArea,
+                      "Overhang area before optimization (mm²)")
+        .def_readwrite("optimized_overhang_area", &madfam::geom::OrientationResult::optimizedOverhangArea,
+                      "Overhang area after optimization (mm²)")
+        .def_readwrite("improvement_percent", &madfam::geom::OrientationResult::improvementPercent,
+                      "Percentage improvement (0-100)")
+        .def("__repr__", [](const madfam::geom::OrientationResult& r) {
+            return "OrientationResult(improvement=" + std::to_string(r.improvementPercent) +
+                   "%, original=" + std::to_string(r.originalOverhangArea) +
+                   " mm², optimized=" + std::to_string(r.optimizedOverhangArea) + " mm²)";
+        });
+
     // Vector3 class
     py::class_<madfam::geom::Vector3>(m, "Vector3")
         .def(py::init<>())
@@ -67,6 +84,12 @@ PYBIND11_MODULE(geom_core_py, m) {
              "Analyze printability for 3D printing",
              py::arg("critical_angle_degrees") = 45.0,
              py::arg("min_wall_thickness_mm") = 0.8)
+
+        // Auto-orientation (Milestone 5)
+        .def("auto_orient", &madfam::geom::Analyzer::autoOrient,
+             "Find optimal mesh orientation to minimize overhang area",
+             py::arg("sample_resolution") = 26,
+             py::arg("critical_angle_degrees") = 45.0)
 
         // Legacy methods (for backward compatibility)
         .def("load_data", &madfam::geom::Analyzer::loadData,

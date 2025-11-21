@@ -14,6 +14,13 @@ EMSCRIPTEN_BINDINGS(geom_core_module) {
         .field("score", &PrintabilityReport::score)
         .field("totalSurfaceArea", &PrintabilityReport::totalSurfaceArea);
 
+    // OrientationResult struct (Milestone 5)
+    value_object<OrientationResult>("OrientationResult")
+        .field("optimalUpVector", &OrientationResult::optimalUpVector)
+        .field("originalOverhangArea", &OrientationResult::originalOverhangArea)
+        .field("optimizedOverhangArea", &OrientationResult::optimizedOverhangArea)
+        .field("improvementPercent", &OrientationResult::improvementPercent);
+
     // Vector3 class
     value_object<Vector3>("Vector3")
         .field("x", &Vector3::x)
@@ -31,5 +38,6 @@ EMSCRIPTEN_BINDINGS(geom_core_module) {
         .function("getVertexCount", &Analyzer::getVertexCount)
         .function("getTriangleCount", &Analyzer::getTriangleCount)
         .function("buildSpatialIndex", &Analyzer::buildSpatialIndex)
-        .function("getPrintabilityReport", &Analyzer::getPrintabilityReport);
+        .function("getPrintabilityReport", &Analyzer::getPrintabilityReport)
+        .function("autoOrient", &Analyzer::autoOrient);
 }

@@ -77,10 +77,6 @@ PrintabilityReport Analyzer::getPrintabilityReport(double criticalAngleDegrees,
         return report;
     }
 
-    const double PI = 3.14159265358979323846;
-    const double criticalAngleRad = criticalAngleDegrees * PI / 180.0;
-    const double cosThreshold = std::cos(criticalAngleRad);
-
     const auto& vertices = mesh->getVertices();
     const auto& faces = mesh->getFaces();
 
@@ -90,29 +86,7 @@ PrintabilityReport Analyzer::getPrintabilityReport(double criticalAngleDegrees,
 
     Vector3 upVector(0, 0, 1); // Z-up coordinate system
     double totalSurfaceArea = 0.0;
-    double overhangArea = 0.0;
-
-    for (const auto& face : faces) {
-        const Vector3& v0 = vertices[face.v0];
-        const Vector3& v1 = vertices[face.v1];
-        const Vector3& v2 = vertices[face.v2];
-
-        // Calculate face normal
-        Vector3 normal = calculateTriangleNormal(v0, v1, v2);
-
-        // Calculate face area
-        double area = calculateTriangleArea(v0, v1, v2);
-        totalSurfaceArea += area;
-
-        // Check if this is an overhang (facing downward)
-        // Dot product with up vector: negative means facing down
-        double dotProduct = normal * upVector;
-
-        // If dot < -cos(angle), it's an overhang
-        if (dotProduct < -cosThreshold) {
-            overhangArea += area;
-        }
-    }
+    double overhangArea = analyzeOverhangs(upVector, criticalAngleDegrees, totalSurfaceArea);
 
     report.totalSurfaceArea = totalSurfaceArea;
     report.overhangArea = overhangArea;
@@ -190,6 +164,147 @@ PrintabilityReport Analyzer::getPrintabilityReport(double criticalAngleDegrees,
     report.score = std::max(0.0, score);
 
     return report;
+}
+
+// ========================================
+// Auto-Orientation (Milestone 5)
+// ========================================
+
+OrientationResult Analyzer::autoOrient(int sampleResolution, double criticalAngleDegrees) {
+    OrientationResult result;
+
+    if (!mesh || mesh->getVertexCount() == 0) {
+        std::cerr << "Error: No mesh loaded for auto-orientation" << std::endl;
+        return result;
+    }
+
+    // Calculate original overhang area (with Z-up)
+    Vector3 originalUpVector(0, 0, 1);
+    double originalTotalArea = 0.0;
+    result.originalOverhangArea = analyzeOverhangs(originalUpVector, criticalAngleDegrees, originalTotalArea);
+
+    // Generate candidate up vectors (sphere sampling)
+    std::vector<Vector3> candidates;
+
+    // 6 cardinal directions (±X, ±Y, ±Z)
+    candidates.push_back(Vector3(1, 0, 0));
+    candidates.push_back(Vector3(-1, 0, 0));
+    candidates.push_back(Vector3(0, 1, 0));
+    candidates.push_back(Vector3(0, -1, 0));
+    candidates.push_back(Vector3(0, 0, 1));
+    candidates.push_back(Vector3(0, 0, -1));
+
+    // 12 edge directions (45° between two axes)
+    const double inv_sqrt2 = 1.0 / std::sqrt(2.0);
+    candidates.push_back(Vector3(inv_sqrt2, inv_sqrt2, 0).normalized());
+    candidates.push_back(Vector3(inv_sqrt2, -inv_sqrt2, 0).normalized());
+    candidates.push_back(Vector3(-inv_sqrt2, inv_sqrt2, 0).normalized());
+    candidates.push_back(Vector3(-inv_sqrt2, -inv_sqrt2, 0).normalized());
+
+    candidates.push_back(Vector3(inv_sqrt2, 0, inv_sqrt2).normalized());
+    candidates.push_back(Vector3(inv_sqrt2, 0, -inv_sqrt2).normalized());
+    candidates.push_back(Vector3(-inv_sqrt2, 0, inv_sqrt2).normalized());
+    candidates.push_back(Vector3(-inv_sqrt2, 0, -inv_sqrt2).normalized());
+
+    candidates.push_back(Vector3(0, inv_sqrt2, inv_sqrt2).normalized());
+    candidates.push_back(Vector3(0, inv_sqrt2, -inv_sqrt2).normalized());
+    candidates.push_back(Vector3(0, -inv_sqrt2, inv_sqrt2).normalized());
+    candidates.push_back(Vector3(0, -inv_sqrt2, -inv_sqrt2).normalized());
+
+    // 8 corner directions (±X, ±Y, ±Z all non-zero)
+    const double inv_sqrt3 = 1.0 / std::sqrt(3.0);
+    candidates.push_back(Vector3(inv_sqrt3, inv_sqrt3, inv_sqrt3).normalized());
+    candidates.push_back(Vector3(inv_sqrt3, inv_sqrt3, -inv_sqrt3).normalized());
+    candidates.push_back(Vector3(inv_sqrt3, -inv_sqrt3, inv_sqrt3).normalized());
+    candidates.push_back(Vector3(inv_sqrt3, -inv_sqrt3, -inv_sqrt3).normalized());
+    candidates.push_back(Vector3(-inv_sqrt3, inv_sqrt3, inv_sqrt3).normalized());
+    candidates.push_back(Vector3(-inv_sqrt3, inv_sqrt3, -inv_sqrt3).normalized());
+    candidates.push_back(Vector3(-inv_sqrt3, -inv_sqrt3, inv_sqrt3).normalized());
+    candidates.push_back(Vector3(-inv_sqrt3, -inv_sqrt3, -inv_sqrt3).normalized());
+
+    // Search for best orientation
+    double bestOverhangArea = result.originalOverhangArea;
+    Vector3 bestUpVector = originalUpVector;
+
+    std::cout << "Testing " << candidates.size() << " orientations..." << std::endl;
+
+    for (const auto& candidate : candidates) {
+        double totalArea = 0.0;
+        double overhangArea = analyzeOverhangs(candidate, criticalAngleDegrees, totalArea);
+
+        if (overhangArea < bestOverhangArea) {
+            bestOverhangArea = overhangArea;
+            bestUpVector = candidate;
+        }
+    }
+
+    // Fill result
+    result.optimalUpVector = bestUpVector;
+    result.optimizedOverhangArea = bestOverhangArea;
+
+    if (result.originalOverhangArea > 0.0) {
+        result.improvementPercent =
+            ((result.originalOverhangArea - result.optimizedOverhangArea) /
+             result.originalOverhangArea) * 100.0;
+    } else {
+        result.improvementPercent = 0.0;
+    }
+
+    std::cout << "Original overhang: " << result.originalOverhangArea << " mm²" << std::endl;
+    std::cout << "Optimized overhang: " << result.optimizedOverhangArea << " mm²" << std::endl;
+    std::cout << "Improvement: " << result.improvementPercent << "%" << std::endl;
+    std::cout << "Optimal up vector: (" << bestUpVector.x << ", "
+              << bestUpVector.y << ", " << bestUpVector.z << ")" << std::endl;
+
+    return result;
+}
+
+// ========================================
+// Private Helper Methods
+// ========================================
+
+double Analyzer::analyzeOverhangs(const Vector3& upVector,
+                                  double criticalAngleDegrees,
+                                  double& outTotalArea) const {
+    if (!mesh || mesh->getVertexCount() == 0) {
+        outTotalArea = 0.0;
+        return 0.0;
+    }
+
+    const double PI = 3.14159265358979323846;
+    const double criticalAngleRad = criticalAngleDegrees * PI / 180.0;
+    const double cosThreshold = std::cos(criticalAngleRad);
+
+    const auto& vertices = mesh->getVertices();
+    const auto& faces = mesh->getFaces();
+
+    double totalSurfaceArea = 0.0;
+    double overhangArea = 0.0;
+
+    for (const auto& face : faces) {
+        const Vector3& v0 = vertices[face.v0];
+        const Vector3& v1 = vertices[face.v1];
+        const Vector3& v2 = vertices[face.v2];
+
+        // Calculate face normal
+        Vector3 normal = calculateTriangleNormal(v0, v1, v2);
+
+        // Calculate face area
+        double area = calculateTriangleArea(v0, v1, v2);
+        totalSurfaceArea += area;
+
+        // Check if this is an overhang (facing downward)
+        // Dot product with up vector: negative means facing down
+        double dotProduct = normal * upVector;
+
+        // If dot < -cos(angle), it's an overhang
+        if (dotProduct < -cosThreshold) {
+            overhangArea += area;
+        }
+    }
+
+    outTotalArea = totalSurfaceArea;
+    return overhangArea;
 }
 
 // ========================================

@@ -26,6 +26,22 @@ namespace madfam::geom {
     };
 
     /**
+     * @brief Auto-orientation optimization result (Milestone 5)
+     */
+    struct OrientationResult {
+        Vector3 optimalUpVector;        // The direction that should point "Up"
+        double originalOverhangArea;    // Overhang area before optimization (mm²)
+        double optimizedOverhangArea;   // Overhang area after optimization (mm²)
+        double improvementPercent;      // Percentage improvement (0-100)
+
+        OrientationResult()
+            : optimalUpVector(0, 0, 1)
+            , originalOverhangArea(0.0)
+            , optimizedOverhangArea(0.0)
+            , improvementPercent(0.0) {}
+    };
+
+    /**
      * @brief High-level geometry analysis interface
      *
      * Provides convenient methods for loading and analyzing 3D models.
@@ -113,6 +129,23 @@ namespace madfam::geom {
                                                  double minWallThicknessMM);
 
         // ========================================
+        // Auto-Orientation (Milestone 5)
+        // ========================================
+
+        /**
+         * @brief Find optimal mesh orientation to minimize overhang area
+         *
+         * @param sampleResolution Number of test orientations (default 26)
+         * @param criticalAngleDegrees Overhang angle threshold (default 45°)
+         * @return OrientationResult with optimal up vector and improvement metrics
+         *
+         * Uses discrete sphere sampling to test multiple orientations without
+         * rotating the mesh vertices. Tests cardinals + 45° offsets.
+         */
+        OrientationResult autoOrient(int sampleResolution = 26,
+                                     double criticalAngleDegrees = 45.0);
+
+        // ========================================
         // Legacy Methods (for backward compatibility)
         // ========================================
 
@@ -136,5 +169,16 @@ namespace madfam::geom {
     private:
         std::unique_ptr<Mesh> mesh;
         std::unique_ptr<AABBTree> spatialTree;
+
+        /**
+         * @brief Calculate overhang area for a given up vector
+         * @param upVector The direction considered "up" for this analysis
+         * @param criticalAngleDegrees Overhang angle threshold
+         * @param outTotalArea Output parameter for total surface area
+         * @return Overhang area in mm²
+         */
+        double analyzeOverhangs(const Vector3& upVector,
+                               double criticalAngleDegrees,
+                               double& outTotalArea) const;
     };
 }
