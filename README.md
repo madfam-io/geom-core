@@ -9,8 +9,9 @@ High-performance C++ geometry analysis engine for 3D printing, with Python and W
 
 ## Features
 
-- **Zero Dependencies**: Uses only C++17 standard library (no OCCT, CGAL, or other heavy dependencies)
+- **Zero Dependencies**: Core library uses only C++17 standard library for lightweight builds
 - **Binary STL Support**: Fast binary STL parser with vertex deduplication
+- **STEP File Support**: Optional Open CASCADE Technology (OCCT) integration for CAD file import
 - **Mesh Analysis**: Volume calculation, watertight checking, bounding box computation
 - **Printability Analysis**: Overhang detection, wall thickness analysis with spatial acceleration
 - **Auto-Orientation**: Automatically find optimal mesh orientation to minimize support material
@@ -33,6 +34,27 @@ cd geom-core
 pip install .
 ```
 
+### Optional: STEP File Support
+
+To enable STEP file loading (requires Open CASCADE Technology):
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install libocct-data-exchange-dev libocct-ocaf-dev \
+  libocct-modeling-data-dev libocct-modeling-algorithms-dev
+cd geom-core
+cmake -DUSE_OCCT=ON ..
+make
+```
+
+**macOS:**
+```bash
+brew install opencascade
+cd geom-core
+cmake -DUSE_OCCT=ON ..
+make
+```
+
 ## Quick Start
 
 ### Python
@@ -43,6 +65,9 @@ import geom_core_py as gc
 # Load an STL file
 analyzer = gc.Analyzer()
 analyzer.load_stl("model.stl")
+
+# Or load a STEP file (requires OCCT)
+# analyzer.load_step("model.step", linear_deflection=0.1)
 
 # Basic mesh info
 print(f"Vertices: {analyzer.get_vertex_count()}")
@@ -135,6 +160,7 @@ The project includes comprehensive tests for all features:
 - `tests/test_mesh.py`: Basic mesh operations (Milestone 2)
 - `tests/test_printability.py`: Printability analysis (Milestone 4)
 - `tests/test_auto_orient.py`: Auto-orientation (Milestone 5)
+- `tests/test_step.py`: STEP file loading API (Milestone 7)
 
 All tests run automatically via GitHub Actions on every push.
 
@@ -145,6 +171,7 @@ All tests run automatically via GitHub Actions on every push.
 #### Mesh Loading
 - `load_stl(filepath)`: Load binary STL file
 - `load_stl_from_bytes(data)`: Load from memory (WASM-friendly)
+- `load_step(filepath, linear_deflection=0.1, angular_deflection=0.5)`: Load STEP/STP file (requires OCCT)
 
 #### Mesh Properties
 - `get_vertex_count()`: Number of vertices
@@ -181,6 +208,7 @@ All tests run automatically via GitHub Actions on every push.
 - ✅ **Milestone 4**: Printability analysis (overhangs, wall thickness)
 - ✅ **Milestone 5**: Auto-orientation algorithm
 - ✅ **Milestone 6**: CI/CD pipeline & packaging
+- ✅ **Milestone 7**: STEP file support via Open CASCADE Technology
 
 ## Technical Details
 

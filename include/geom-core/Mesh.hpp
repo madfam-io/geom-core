@@ -95,6 +95,18 @@ public:
      */
     const std::vector<Triangle>& getFaces() const { return faces; }
 
+    /**
+     * @brief Set vertices directly (for STEP loader and other importers)
+     * @param verts Vector of vertices to set
+     */
+    void setVertices(const std::vector<Vector3>& verts) { vertices = verts; }
+
+    /**
+     * @brief Set triangles directly (for STEP loader and other importers)
+     * @param tris Vector of triangles to set
+     */
+    void setTriangles(const std::vector<Triangle>& tris) { faces = tris; }
+
 private:
     std::vector<Vector3> vertices;
     std::vector<Triangle> faces;

@@ -66,6 +66,11 @@ PYBIND11_MODULE(geom_core_py, m) {
         .def("load_stl", &madfam::geom::Analyzer::loadSTL,
              "Load a mesh from binary STL file",
              py::arg("filepath"))
+        .def("load_step", &madfam::geom::Analyzer::loadStep,
+             "Load a mesh from STEP file (requires OCCT)",
+             py::arg("filepath"),
+             py::arg("linear_deflection") = 0.1,
+             py::arg("angular_deflection") = 0.5)
         .def("get_volume", &madfam::geom::Analyzer::getVolume,
              "Calculate the volume of the loaded mesh")
         .def("is_watertight", &madfam::geom::Analyzer::isWatertight,

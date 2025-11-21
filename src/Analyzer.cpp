@@ -2,6 +2,10 @@
 #include <iostream>
 #include <cmath>
 
+#ifdef GC_USE_OCCT
+#include "BRepLoader.hpp"
+#endif
+
 namespace madfam::geom {
 
 // Constructor
@@ -26,6 +30,37 @@ bool Analyzer::loadSTLFromBytes(const std::string& data) {
         mesh = std::make_unique<Mesh>();
     }
     return mesh->loadFromSTLBuffer(data.data(), data.size());
+}
+
+bool Analyzer::loadStep(const std::string& filepath,
+                       double linearDeflection,
+                       double angularDeflection) {
+#ifdef GC_USE_OCCT
+    if (!mesh) {
+        mesh = std::make_unique<Mesh>();
+    }
+
+    // Use the BRepLoader to load and tessellate the STEP file
+    bool success = brep::loadStepFile(filepath, *mesh, linearDeflection, angularDeflection);
+
+    if (success) {
+        std::cout << "Successfully loaded STEP file: " << filepath << std::endl;
+        std::cout << "  Vertices: " << mesh->getVertexCount() << std::endl;
+        std::cout << "  Triangles: " << mesh->getTriangleCount() << std::endl;
+    } else {
+        std::cerr << "Failed to load STEP file: " << filepath << std::endl;
+    }
+
+    return success;
+#else
+    std::cerr << "Error: geom-core was compiled without Open CASCADE support." << std::endl;
+    std::cerr << "STEP file loading is not available." << std::endl;
+    std::cerr << "To enable STEP support, rebuild with: cmake -DUSE_OCCT=ON .." << std::endl;
+    (void)filepath;  // Suppress unused parameter warning
+    (void)linearDeflection;
+    (void)angularDeflection;
+    return false;
+#endif
 }
 
 double Analyzer::getVolume() const {

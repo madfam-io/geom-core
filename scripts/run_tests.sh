@@ -28,6 +28,10 @@ echo "Running test_auto_orient.py..."
 python3 tests/test_auto_orient.py
 
 echo ""
+echo "Running test_step.py..."
+python3 tests/test_step.py
+
+echo ""
 echo "========================================"
 echo "All tests passed!"
 echo "========================================"

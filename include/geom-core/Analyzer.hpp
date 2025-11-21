@@ -74,6 +74,25 @@ namespace madfam::geom {
         bool loadSTLFromBytes(const std::string& data);
 
         /**
+         * @brief Load a mesh from a STEP file (requires OCCT)
+         * @param filepath Path to STEP file (.step or .stp)
+         * @param linearDeflection Tessellation precision in mm (default 0.1mm)
+         * @param angularDeflection Angular precision in radians (default 0.5)
+         * @return true if successful, false otherwise
+         *
+         * This method requires Open CASCADE Technology (OCCT) to be installed.
+         * If compiled without OCCT support, this method will return false and
+         * print an error message.
+         *
+         * The linearDeflection parameter controls the maximum distance between
+         * the tessellated mesh and the original CAD surface. Smaller values
+         * produce more accurate (but larger) meshes.
+         */
+        bool loadStep(const std::string& filepath,
+                     double linearDeflection = 0.1,
+                     double angularDeflection = 0.5);
+
+        /**
          * @brief Calculate the volume of the loaded mesh
          * @return Volume in cubic units (0.0 if no mesh loaded)
          */
