@@ -15,6 +15,8 @@ High-performance C++ geometry analysis engine for 3D printing, with Python and W
 - **Mesh Analysis**: Volume calculation, watertight checking, bounding box computation
 - **Printability Analysis**: Overhang detection, wall thickness analysis with spatial acceleration
 - **Auto-Orientation**: Automatically find optimal mesh orientation to minimize support material
+- **Visualization Data Export**: Per-triangle overhang maps and per-vertex wall thickness for real-time visualization
+- **Interactive 3D Viewer**: WebGL-based Solarpunk viewer with Three.js and zero-copy WASM integration
 - **Cross-Platform**: Python bindings (Linux, macOS, Windows) and WebAssembly for browsers
 - **Production-Ready**: Comprehensive test suite, CI/CD pipeline, proper packaging
 
@@ -106,7 +108,37 @@ console.log(`Score: ${report.score}`);
 
 const orientation = analyzer.autoOrient();
 console.log(`Improvement: ${orientation.improvementPercent}%`);
+
+// Get visualization data (zero-copy Typed Arrays)
+const overhangMap = analyzer.getOverhangMapJS(45.0);  // Uint8Array
+const wallThickness = analyzer.getWallThicknessMapJS(10.0);  // Float32Array
 ```
+
+### 3D Viewer (Solarpunk Edition)
+
+The project includes a beautiful WebGL-based viewer for real-time analysis visualization:
+
+```bash
+# Build WASM module first (requires Emscripten)
+cd build-wasm
+emcmake cmake .. -DBUILD_WASM=ON -DCMAKE_BUILD_TYPE=Release
+emmake make
+
+# Serve the viewer
+cd ../viewer
+python3 -m http.server 8080
+
+# Open http://localhost:8080 in your browser
+```
+
+**Features:**
+- 🎨 Color-coded overhang visualization (green = safe, red = needs support, blue = ground)
+- 📏 Wall thickness gradient display
+- 🔄 Interactive rotation, pan, and zoom controls
+- 🌿 Beautiful solarpunk aesthetic with nature-inspired design
+- ⚡ Zero-copy memory sharing between WASM and JavaScript
+
+See [viewer/README.md](viewer/README.md) for detailed usage instructions.
 
 ## Architecture
 
@@ -185,6 +217,15 @@ All tests run automatically via GitHub Actions on every push.
 - `get_printability_report(critical_angle, min_thickness)`: Analyze printability
 - `auto_orient(sample_resolution, critical_angle)`: Find optimal orientation
 
+#### Visualization Data Export (Milestone 8)
+- `calculate_overhang_map(critical_angle)`: Get per-triangle overhang classification
+  - Returns: `std::vector<uint8_t>` (0=safe, 1=overhang, 2=ground)
+- `calculate_wall_thickness_map(max_distance)`: Get per-vertex wall thickness
+  - Returns: `std::vector<float>` (wall thickness in mm)
+- **WASM Only:**
+  - `getOverhangMapJS(critical_angle)`: Returns Uint8Array view (zero-copy)
+  - `getWallThicknessMapJS(max_distance)`: Returns Float32Array view (zero-copy)
+
 ### PrintabilityReport
 
 - `score`: Overall printability (0-100)
@@ -209,6 +250,7 @@ All tests run automatically via GitHub Actions on every push.
 - ✅ **Milestone 5**: Auto-orientation algorithm
 - ✅ **Milestone 6**: CI/CD pipeline & packaging
 - ✅ **Milestone 7**: STEP file support via Open CASCADE Technology
+- ✅ **Milestone 8**: Visualization data export & Solarpunk 3D viewer
 
 ## Technical Details
 
@@ -243,6 +285,41 @@ for candidate_up_vector in sphere_samples:
     if overhang_area < best:
         best = candidate_up_vector
 ```
+
+### Visualization Data Export (Milestone 8)
+
+For real-time visualization in WebGL/Three.js, the engine exports granular per-element data:
+
+**Overhang Map** (per triangle):
+```cpp
+std::vector<uint8_t> overhang_map(triangle_count);
+// 0 = safe (self-supporting)
+// 1 = overhang (needs support)
+// 2 = ground (build platform contact)
+```
+
+**Wall Thickness Map** (per vertex):
+```cpp
+std::vector<float> thickness_map(vertex_count);
+// Distance to nearest opposite wall in mm
+```
+
+**Zero-Copy WASM Integration:**
+```cpp
+// C++ side - return memory view directly
+emscripten::val getOverhangMapJS(Analyzer& self, double angle) {
+    const auto& data = self.calculateOverhangMap(angle);
+    return emscripten::val(emscripten::typed_memory_view(data.size(), data.data()));
+}
+
+// JavaScript side - no copying, instant access
+const overhangMap = analyzer.getOverhangMapJS(45);  // Uint8Array
+for (let i = 0; i < triangleCount; i++) {
+    applyColor(triangles[i], overhangMap[i]);
+}
+```
+
+This approach enables real-time visualization of large meshes (100k+ triangles) with zero performance overhead.
 
 ## Contributing
 

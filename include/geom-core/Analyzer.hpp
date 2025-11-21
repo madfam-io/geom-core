@@ -165,6 +165,37 @@ namespace madfam::geom {
                                      double criticalAngleDegrees = 45.0);
 
         // ========================================
+        // Visualization Data Export (Milestone 8)
+        // ========================================
+
+        /**
+         * @brief Calculate per-triangle overhang classification map
+         *
+         * @param criticalAngleDegrees Overhang angle threshold (typically 45°)
+         * @return Vector of uint8_t with size = triangle count
+         *         Values: 0 = Safe, 1 = Overhang, 2 = Ground-facing
+         *
+         * This method provides granular data for visualization. Each triangle
+         * is classified based on its orientation relative to the build platform.
+         * Ground-facing triangles (2) are those pointing nearly straight down
+         * and don't need support. Overhangs (1) need support structures.
+         */
+        const std::vector<uint8_t>& calculateOverhangMap(double criticalAngleDegrees);
+
+        /**
+         * @brief Calculate per-vertex wall thickness values
+         *
+         * @param minWallThicknessMM Minimum acceptable wall thickness (typically 0.8-2.0mm)
+         * @return Vector of float with size = vertex count
+         *         Values: Distance to nearest opposite wall in mm
+         *
+         * This method provides wall thickness data for visualization.
+         * Requires buildSpatialIndex() to be called first.
+         * Returns 0.0 for vertices where no opposite wall is found.
+         */
+        const std::vector<float>& calculateWallThicknessMap(double maxSearchDistanceMM);
+
+        // ========================================
         // Legacy Methods (for backward compatibility)
         // ========================================
 
@@ -188,6 +219,10 @@ namespace madfam::geom {
     private:
         std::unique_ptr<Mesh> mesh;
         std::unique_ptr<AABBTree> spatialTree;
+
+        // Cached visualization data (Milestone 8)
+        std::vector<uint8_t> overhangMapCache;
+        std::vector<float> wallThicknessCache;
 
         /**
          * @brief Calculate overhang area for a given up vector
