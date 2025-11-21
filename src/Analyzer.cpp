@@ -295,6 +295,129 @@ OrientationResult Analyzer::autoOrient(int sampleResolution, double criticalAngl
 }
 
 // ========================================
+// Visualization Data Export (Milestone 8)
+// ========================================
+
+const std::vector<uint8_t>& Analyzer::calculateOverhangMap(double criticalAngleDegrees) {
+    // Clear and resize cache
+    overhangMapCache.clear();
+
+    if (!mesh || mesh->getVertexCount() == 0) {
+        std::cerr << "Error: No mesh loaded for overhang map" << std::endl;
+        return overhangMapCache;
+    }
+
+    const auto& vertices = mesh->getVertices();
+    const auto& faces = mesh->getFaces();
+
+    // Resize to triangle count
+    overhangMapCache.resize(faces.size());
+
+    // Z-up coordinate system
+    Vector3 upVector(0, 0, 1);
+
+    const double PI = 3.14159265358979323846;
+    const double criticalAngleRad = criticalAngleDegrees * PI / 180.0;
+    const double cosThreshold = std::cos(criticalAngleRad);
+
+    // Ground-facing threshold (triangles pointing straight down, < -0.95)
+    const double groundThreshold = -0.95;
+
+    for (size_t i = 0; i < faces.size(); ++i) {
+        const auto& face = faces[i];
+        const Vector3& v0 = vertices[face.v0];
+        const Vector3& v1 = vertices[face.v1];
+        const Vector3& v2 = vertices[face.v2];
+
+        // Calculate face normal
+        Vector3 normal = calculateTriangleNormal(v0, v1, v2);
+
+        // Dot product with up vector
+        double dotProduct = normal * upVector;
+
+        // Classify triangle
+        if (dotProduct < groundThreshold) {
+            // Triangle pointing straight down (build platform contact)
+            overhangMapCache[i] = 2;
+        } else if (dotProduct < -cosThreshold) {
+            // Overhang requiring support
+            overhangMapCache[i] = 1;
+        } else {
+            // Safe angle (self-supporting)
+            overhangMapCache[i] = 0;
+        }
+    }
+
+    std::cout << "Generated overhang map for " << faces.size() << " triangles" << std::endl;
+    return overhangMapCache;
+}
+
+const std::vector<float>& Analyzer::calculateWallThicknessMap(double maxSearchDistanceMM) {
+    // Clear and resize cache
+    wallThicknessCache.clear();
+
+    if (!mesh || mesh->getVertexCount() == 0) {
+        std::cerr << "Error: No mesh loaded for wall thickness map" << std::endl;
+        return wallThicknessCache;
+    }
+
+    if (!spatialTree || !spatialTree->isBuilt()) {
+        std::cerr << "Error: Spatial index not built - call buildSpatialIndex() first" << std::endl;
+        return wallThicknessCache;
+    }
+
+    const auto& vertices = mesh->getVertices();
+    const auto& faces = mesh->getFaces();
+
+    // Resize to vertex count
+    wallThicknessCache.resize(vertices.size(), 0.0f);
+
+    std::cout << "Calculating wall thickness for " << vertices.size() << " vertices..." << std::endl;
+
+    // For each vertex, compute average normal and cast ray inward
+    for (size_t i = 0; i < vertices.size(); ++i) {
+        const Vector3& vertex = vertices[i];
+
+        // Compute vertex normal (average of adjacent face normals)
+        Vector3 vertexNormal(0, 0, 0);
+        int faceCount = 0;
+
+        for (const auto& face : faces) {
+            if (face.v0 == static_cast<int>(i) ||
+                face.v1 == static_cast<int>(i) ||
+                face.v2 == static_cast<int>(i)) {
+                const Vector3& v0 = vertices[face.v0];
+                const Vector3& v1 = vertices[face.v1];
+                const Vector3& v2 = vertices[face.v2];
+                vertexNormal = vertexNormal + calculateTriangleNormal(v0, v1, v2);
+                faceCount++;
+            }
+        }
+
+        if (faceCount > 0) {
+            vertexNormal = vertexNormal.normalized();
+
+            // Cast ray inward (negative normal direction)
+            const double epsilon = 0.001; // Offset to avoid self-intersection
+            Ray ray(vertex + vertexNormal * epsilon, vertexNormal * -1.0);
+
+            // Cast ray to find opposite wall
+            RayHit hit = spatialTree->rayCast(ray, maxSearchDistanceMM);
+
+            if (hit.hit) {
+                wallThicknessCache[i] = static_cast<float>(hit.distance);
+            } else {
+                // No opposite wall found within search distance
+                wallThicknessCache[i] = static_cast<float>(maxSearchDistanceMM);
+            }
+        }
+    }
+
+    std::cout << "Wall thickness calculation complete" << std::endl;
+    return wallThicknessCache;
+}
+
+// ========================================
 // Private Helper Methods
 // ========================================
 

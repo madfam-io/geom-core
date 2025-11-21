@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geom-Core Solarpunk Viewer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header>
+            <h1>🌿 Geom-Core Solarpunk Viewer</h1>
+            <p class="subtitle">Real-time 3D Printability Analysis</p>
+        </header>
+
+        <!-- Main Container -->
+        <div class="container">
+            <!-- Control Panel -->
+            <aside class="control-panel">
+                <div class="panel-section">
+                    <h2>📂 Load Model</h2>
+                    <div class="file-upload-area" id="dropZone">
+                        <input type="file" id="fileInput" accept=".stl" hidden>
+                        <div class="upload-content">
+                            <div class="upload-icon">📦</div>
+                            <p>Drop STL file here or click to browse</p>
+                            <button class="btn btn-primary" id="browseBtn">Browse Files</button>
+                        </div>
+                    </div>
+
+                    <div id="fileInfo" class="file-info" style="display: none;">
+                        <p><strong>File:</strong> <span id="fileName"></span></p>
+                        <p><strong>Vertices:</strong> <span id="vertexCount"></span></p>
+                        <p><strong>Triangles:</strong> <span id="triangleCount"></span></p>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h2>🔍 Analysis</h2>
+
+                    <div class="control-group">
+                        <label for="criticalAngle">Critical Angle (degrees)</label>
+                        <div class="input-with-value">
+                            <input type="range" id="criticalAngle" min="30" max="60" value="45" step="1">
+                            <span id="criticalAngleValue">45°</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="visualMode">Visualization Mode</label>
+                        <select id="visualMode">
+                            <option value="overhang">Overhang Analysis</option>
+                            <option value="wallThickness">Wall Thickness</option>
+                            <option value="normal">Normal (No Analysis)</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-analyze" id="analyzeBtn" disabled>
+                        🚀 Run Analysis
+                    </button>
+                </div>
+
+                <div class="panel-section" id="resultsPanel" style="display: none;">
+                    <h2>📊 Results</h2>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <div class="result-label">Overhang Area</div>
+                            <div class="result-value" id="overhangArea">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Overhang %</div>
+                            <div class="result-value" id="overhangPercent">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Score</div>
+                            <div class="result-value" id="printabilityScore">-</div>
+                        </div>
+                    </div>
+
+                    <div class="legend">
+                        <h3>Color Legend</h3>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #4CAF50;"></div>
+                            <span>Safe (Self-supporting)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #FF5722;"></div>
+                            <span>Overhang (Needs support)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #2196F3;"></div>
+                            <span>Ground (Build platform)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h2>⚙️ Settings</h2>
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="autoRotate">
+                            Auto-rotate model
+                        </label>
+                    </div>
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="showWireframe">
+                            Show wireframe
+                        </label>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 3D Viewport -->
+            <main class="viewport">
+                <canvas id="canvas3d"></canvas>
+                <div class="viewport-overlay">
+                    <div id="loadingIndicator" class="loading" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Loading WASM Engine...</p>
+                    </div>
+                    <div id="analysisIndicator" class="loading" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Analyzing geometry...</p>
+                    </div>
+                </div>
+                <div class="viewport-info">
+                    <p>Left click: Rotate • Right click: Pan • Scroll: Zoom</p>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Three.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- WASM Module -->
+    <script src="../build-wasm/geom-core.js"></script>
+
+    <!-- Application Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
