@@ -1,58 +1,53 @@
 #!/bin/bash
 set -e
 
-echo "======================================"
-echo "Building geom-core WebAssembly Module"
-echo "======================================"
+echo "========================================"
+echo "Building geom-core WASM bindings"
+echo "========================================"
 
-# Get script directory and project root
+# Get the script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-BUILD_DIR="$PROJECT_ROOT/build/wasm"
 
-echo "Project root: $PROJECT_ROOT"
-echo "Build directory: $BUILD_DIR"
+cd "$PROJECT_ROOT"
+
+# Check if emscripten is available
+if ! command -v emcmake &> /dev/null; then
+    echo "ERROR: Emscripten SDK not found!"
+    echo "Please install and activate emsdk:"
+    echo "  git clone https://github.com/emscripten-core/emsdk.git"
+    echo "  cd emsdk"
+    echo "  ./emsdk install latest"
+    echo "  ./emsdk activate latest"
+    echo "  source ./emsdk_env.sh"
+    exit 1
+fi
 
 # Create build directory
-mkdir -p "$BUILD_DIR"
+mkdir -p build/wasm
+cd build/wasm
 
-# Docker image for Emscripten
-EMSDK_IMAGE="emscripten/emsdk:latest"
+# Configure with Emscripten
+echo "Configuring CMake with Emscripten..."
+emcmake cmake ../.. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_PYTHON_BINDINGS=OFF \
+    -DBUILD_WASM_BINDINGS=ON
 
-echo ""
-echo "Step 1: Configuring with emcmake..."
-docker run --rm \
-    -v "$PROJECT_ROOT:/src" \
-    -u "$(id -u):$(id -g)" \
-    -w /src \
-    "$EMSDK_IMAGE" \
-    emcmake cmake \
-        -S /src \
-        -B /src/build/wasm \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_PYTHON_BINDINGS=OFF \
-        -DBUILD_WASM_BINDINGS=ON
+# Build
+echo "Building..."
+emmake make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
-echo ""
-echo "Step 2: Building with emmake..."
-docker run --rm \
-    -v "$PROJECT_ROOT:/src" \
-    -u "$(id -u):$(id -g)" \
-    -w /src \
-    "$EMSDK_IMAGE" \
-    emmake make -C /src/build/wasm -j4
+# Create dist directory and copy artifacts
+echo "Copying artifacts to dist/..."
+mkdir -p ../../dist
+cp wasm/geom_core.js ../../dist/ 2>/dev/null || true
+cp wasm/geom_core.wasm ../../dist/ 2>/dev/null || true
 
-echo ""
-echo "======================================"
-echo "Build complete!"
-echo "======================================"
-echo "WASM module location: $BUILD_DIR/wasm/"
-echo ""
-echo "Files generated:"
-ls -lh "$BUILD_DIR/wasm/" 2>/dev/null || echo "  (no files yet - check for errors above)"
-echo ""
-echo "To test the module:"
-echo "  cd $PROJECT_ROOT/web_test"
-echo "  python3 -m http.server 8000"
-echo "  # Then open http://localhost:8000 in your browser"
-echo "======================================"
+echo "========================================"
+echo "WASM build complete!"
+echo "Artifacts in: dist/"
+echo "========================================"
+
+# List built files
+ls -lh ../../dist/ 2>/dev/null || true

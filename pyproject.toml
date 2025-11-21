@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "cmake>=3.15", "pybind11>=2.6"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geom-core"
+version = "1.0.0"
+description = "High-performance C++ geometry analysis engine for 3D printing"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "MIT"}
+authors = [
+    {name = "MadFam", email = "contact@madfam.io"}
+]
+keywords = ["geometry", "3d-printing", "mesh-analysis", "stl", "printability"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Manufacturing",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: C++",
+]
+
+[project.urls]
+Homepage = "https://github.com/madfam-io/geom-core"
+Repository = "https://github.com/madfam-io/geom-core"
+Documentation = "https://github.com/madfam-io/geom-core#readme"
+Issues = "https://github.com/madfam-io/geom-core/issues"
+
+[tool.setuptools]
+packages = ["geom_core"]
+
+[tool.setuptools.package-data]
+geom_core = ["*.so", "*.pyd", "*.dylib"]

@@ -1,41 +1,35 @@
 #!/bin/bash
 set -e
 
-echo "=================================="
-echo "Building geom-core Python Bindings"
-echo "=================================="
+echo "========================================"
+echo "Building geom-core Python bindings"
+echo "========================================"
 
-# Get script directory and project root
+# Get the script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-BUILD_DIR="$PROJECT_ROOT/build"
 
-echo "Project root: $PROJECT_ROOT"
-echo "Build directory: $BUILD_DIR"
+cd "$PROJECT_ROOT"
 
 # Create build directory
-mkdir -p "$BUILD_DIR"
-cd "$BUILD_DIR"
+mkdir -p build
+cd build
 
-# Configure with CMake
-echo ""
+# Configure CMake
 echo "Configuring CMake..."
 cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_PYTHON_BINDINGS=ON
+    -DBUILD_PYTHON_BINDINGS=ON \
+    -DBUILD_WASM_BINDINGS=OFF
 
 # Build
-echo ""
 echo "Building..."
-cmake --build . --config Release -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
-echo ""
-echo "=================================="
+echo "========================================"
 echo "Build complete!"
-echo "=================================="
-echo "Python module location: $BUILD_DIR/python/geom_core_py.so"
-echo ""
-echo "To test the module:"
-echo "  cd $PROJECT_ROOT"
-echo "  PYTHONPATH=$BUILD_DIR/python python3 tests/test_basic.py"
-echo "=================================="
+echo "Python module: build/python/geom_core_py.*"
+echo "========================================"
+
+# List built files
+ls -lh python/geom_core_py.* 2>/dev/null || true

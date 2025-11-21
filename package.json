@@ -1,0 +1,43 @@
+{
+  "name": "@madfam/geom-core-wasm",
+  "version": "1.0.0",
+  "description": "High-performance WebAssembly geometry analysis engine for 3D printing",
+  "main": "dist/geom_core.js",
+  "types": "dist/geom_core.d.ts",
+  "files": [
+    "dist/geom_core.js",
+    "dist/geom_core.wasm",
+    "dist/geom_core.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "./scripts/build_wasm.sh",
+    "test": "node tests/test_wasm.js",
+    "clean": "rm -rf dist build/wasm"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/madfam-io/geom-core.git"
+  },
+  "keywords": [
+    "webassembly",
+    "wasm",
+    "geometry",
+    "3d-printing",
+    "mesh-analysis",
+    "stl",
+    "printability",
+    "emscripten"
+  ],
+  "author": "MadFam <contact@madfam.io>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/madfam-io/geom-core/issues"
+  },
+  "homepage": "https://github.com/madfam-io/geom-core#readme",
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
