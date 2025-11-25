@@ -1,43 +1,86 @@
 {
-  "name": "@madfam/geom-core-wasm",
-  "version": "1.0.0",
-  "description": "High-performance WebAssembly geometry analysis engine for 3D printing",
-  "main": "dist/geom_core.js",
-  "types": "dist/geom_core.d.ts",
+  "name": "@madfam/geom-core",
+  "version": "0.1.0",
+  "description": "Unified B-Rep geometry engine for MADFAM ecosystem - zero-lag browser execution with remote GPU compute",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./wasm": {
+      "import": "./dist/wasm/geom-core.js",
+      "require": "./dist/wasm/geom-core.js",
+      "types": "./dist/wasm/geom-core.d.ts"
+    }
+  },
   "files": [
-    "dist/geom_core.js",
-    "dist/geom_core.wasm",
-    "dist/geom_core.d.ts",
+    "dist",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "./scripts/build_wasm.sh",
-    "test": "node tests/test_wasm.js",
-    "clean": "rm -rf dist build/wasm"
+    "build": "npm run build:ts && npm run build:wasm",
+    "build:ts": "npm run build:esm && npm run build:cjs && npm run build:types",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:types": "tsc -p tsconfig.types.json",
+    "build:wasm": "./scripts/build_wasm.sh",
+    "build:wasm:debug": "./scripts/build_wasm.sh --debug",
+    "dev": "tsc -p tsconfig.esm.json --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:wasm": "node tests/test_wasm.js",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist build/wasm",
+    "prepublishOnly": "npm run clean && npm run build"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/madfam-io/geom-core.git"
   },
   "keywords": [
+    "cad",
+    "geometry",
+    "brep",
+    "occt",
+    "opencascade",
     "webassembly",
     "wasm",
-    "geometry",
-    "3d-printing",
-    "mesh-analysis",
-    "stl",
-    "printability",
-    "emscripten"
+    "3d",
+    "modeling",
+    "boolean-operations",
+    "tessellation",
+    "mesh"
   ],
   "author": "MadFam <contact@madfam.io>",
-  "license": "MIT",
+  "license": "LGPL-2.1-only",
   "bugs": {
     "url": "https://github.com/madfam-io/geom-core/issues"
   },
   "homepage": "https://github.com/madfam-io/geom-core#readme",
-  "devDependencies": {},
+  "peerDependencies": {
+    "opencascade.js": "^2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "opencascade.js": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "eslint": "^8.55.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=18.0.0"
   }
 }
