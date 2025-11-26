@@ -65,7 +65,7 @@
   },
   "homepage": "https://github.com/madfam-io/geom-core#readme",
   "peerDependencies": {
-    "opencascade.js": "^2.0.0"
+    "opencascade.js": ">=1.1.1 || ^2.0.0-beta"
   },
   "peerDependenciesMeta": {
     "opencascade.js": {
