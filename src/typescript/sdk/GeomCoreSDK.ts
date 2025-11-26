@@ -13,9 +13,7 @@
  * @module geom-core/sdk
  */
 
-import type {
-  GeometryEngine
-} from '../bindings/GeometryEngine';
+import type { GeometryEngine } from "../bindings/GeometryEngine";
 import type {
   ShapeHandle,
   OperationResult,
@@ -45,8 +43,10 @@ import type {
   ScaleParams,
   MirrorParams,
   ShapeProperties,
-  Vec3,
-} from '../bindings/types';
+} from "../bindings/types";
+
+// Vec3 re-exported for SDK consumers
+export type { Vec3 } from "../bindings/types";
 
 // =============================================================================
 // Configuration Types
@@ -80,14 +80,20 @@ export interface GeomCoreConfig {
 
 export interface RemoteJobStatus {
   jobId: string;
-  status: 'queued' | 'processing' | 'completed' | 'failed';
+  status: "queued" | "processing" | "completed" | "failed";
   progress?: number;
   result?: ShapeHandle;
   error?: string;
 }
 
-export type SlowOperationCallback = (operation: string, durationMs: number) => void;
-export type MemoryPressureCallback = (usedBytes: number, maxBytes: number) => void;
+export type SlowOperationCallback = (
+  operation: string,
+  durationMs: number,
+) => void;
+export type MemoryPressureCallback = (
+  usedBytes: number,
+  maxBytes: number,
+) => void;
 
 // =============================================================================
 // Remote Compute Client
@@ -97,10 +103,13 @@ class RemoteComputeClient {
   private endpoint: string;
   private apiKey?: string;
   private ws?: WebSocket;
-  private pendingJobs: Map<string, {
-    resolve: (result: ShapeHandle) => void;
-    reject: (error: Error) => void;
-  }> = new Map();
+  private pendingJobs: Map<
+    string,
+    {
+      resolve: (result: ShapeHandle) => void;
+      reject: (error: Error) => void;
+    }
+  > = new Map();
 
   constructor(endpoint: string, apiKey?: string, useWebSocket = false) {
     this.endpoint = endpoint;
@@ -112,7 +121,7 @@ class RemoteComputeClient {
   }
 
   private connectWebSocket(): void {
-    const wsEndpoint = this.endpoint.replace(/^http/, 'ws') + '/ws';
+    const wsEndpoint = this.endpoint.replace(/^http/, "ws") + "/ws";
     this.ws = new WebSocket(wsEndpoint);
 
     this.ws.onmessage = (event) => {
@@ -120,37 +129,37 @@ class RemoteComputeClient {
       const pending = this.pendingJobs.get(data.jobId);
 
       if (pending) {
-        if (data.status === 'completed') {
+        if (data.status === "completed") {
           pending.resolve(data.result);
-        } else if (data.status === 'failed') {
+        } else if (data.status === "failed") {
           pending.reject(new Error(data.error));
         }
 
-        if (data.status === 'completed' || data.status === 'failed') {
+        if (data.status === "completed" || data.status === "failed") {
           this.pendingJobs.delete(data.jobId);
         }
       }
     };
 
     this.ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      console.error("WebSocket error:", error);
     };
   }
 
   async executeRemote(
     operation: string,
-    params: Record<string, unknown>
+    params: Record<string, unknown>,
   ): Promise<ShapeHandle> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
 
     if (this.apiKey) {
-      headers['Authorization'] = `Bearer ${this.apiKey}`;
+      headers["Authorization"] = `Bearer ${this.apiKey}`;
     }
 
     const response = await fetch(`${this.endpoint}/compute`, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: JSON.stringify({
         operation,
@@ -169,18 +178,18 @@ class RemoteComputeClient {
 
   async submitJob(
     operation: string,
-    params: Record<string, unknown>
+    params: Record<string, unknown>,
   ): Promise<string> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
 
     if (this.apiKey) {
-      headers['Authorization'] = `Bearer ${this.apiKey}`;
+      headers["Authorization"] = `Bearer ${this.apiKey}`;
     }
 
     const response = await fetch(`${this.endpoint}/jobs`, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: JSON.stringify({
         operation,
@@ -200,7 +209,7 @@ class RemoteComputeClient {
     const headers: Record<string, string> = {};
 
     if (this.apiKey) {
-      headers['Authorization'] = `Bearer ${this.apiKey}`;
+      headers["Authorization"] = `Bearer ${this.apiKey}`;
     }
 
     const response = await fetch(`${this.endpoint}/jobs/${jobId}`, {
@@ -219,16 +228,16 @@ class RemoteComputeClient {
       if (this.ws) {
         // Use WebSocket for real-time updates
         this.pendingJobs.set(jobId, { resolve, reject });
-        this.ws.send(JSON.stringify({ type: 'subscribe', jobId }));
+        this.ws.send(JSON.stringify({ type: "subscribe", jobId }));
       } else {
         // Poll for status
         const poll = async () => {
           const status = await this.getJobStatus(jobId);
 
-          if (status.status === 'completed' && status.result) {
+          if (status.status === "completed" && status.result) {
             resolve(status.result);
-          } else if (status.status === 'failed') {
-            reject(new Error(status.error || 'Job failed'));
+          } else if (status.status === "failed") {
+            reject(new Error(status.error || "Job failed"));
           } else {
             setTimeout(poll, 100); // Poll every 100ms
           }
@@ -251,10 +260,13 @@ class RemoteComputeClient {
 // =============================================================================
 
 class PrecomputationManager {
-  private cache: Map<string, {
-    result: ShapeHandle;
-    timestamp: number;
-  }> = new Map();
+  private cache: Map<
+    string,
+    {
+      result: ShapeHandle;
+      timestamp: number;
+    }
+  > = new Map();
 
   private pending: Map<string, Promise<ShapeHandle>> = new Map();
   private maxCacheAge = 30000; // 30 seconds
@@ -322,9 +334,10 @@ export class GeomCoreSDK {
     this.config = {
       maxMemoryBytes: config.maxMemoryBytes ?? 512 * 1024 * 1024, // 512MB
       slowOperationThresholdMs: config.slowOperationThresholdMs ?? 100,
-      enableRemoteCompute: config.enableRemoteCompute ?? !!config.remoteEndpoint,
-      remoteEndpoint: config.remoteEndpoint ?? '',
-      remoteApiKey: config.remoteApiKey ?? '',
+      enableRemoteCompute:
+        config.enableRemoteCompute ?? !!config.remoteEndpoint,
+      remoteEndpoint: config.remoteEndpoint ?? "",
+      remoteApiKey: config.remoteApiKey ?? "",
       remoteComplexityThreshold: config.remoteComplexityThreshold ?? 0.7,
       enablePrecomputation: config.enablePrecomputation ?? true,
       useWebSocket: config.useWebSocket ?? false,
@@ -334,7 +347,7 @@ export class GeomCoreSDK {
       this.remoteClient = new RemoteComputeClient(
         this.config.remoteEndpoint,
         this.config.remoteApiKey,
-        this.config.useWebSocket
+        this.config.useWebSocket,
       );
     }
   }
@@ -402,7 +415,7 @@ export class GeomCoreSDK {
 
     if (newUsed > this.config.maxMemoryBytes) {
       // Trigger eviction - this would need integration with the engine
-      console.warn('Memory pressure: consider disposing unused shapes');
+      console.warn("Memory pressure: consider disposing unused shapes");
     }
   }
 
@@ -414,20 +427,22 @@ export class GeomCoreSDK {
     operation: string,
     params: Record<string, unknown>,
     localExecutor: () => OperationResult<T>,
-    hint?: ComputeHint
+    hint?: ComputeHint,
   ): Promise<OperationResult<T>> {
     const shapeIds = this.extractShapeIds(params);
     const complexity = this.engine.estimateComplexity(operation, shapeIds);
 
     // Determine execution location
-    let location: ComputeLocation = hint?.preferLocation ?? 'auto';
+    let location: ComputeLocation = hint?.preferLocation ?? "auto";
 
-    if (location === 'auto') {
-      if (complexity.score > this.config.remoteComplexityThreshold &&
-          this.config.enableRemoteCompute) {
-        location = 'remote';
+    if (location === "auto") {
+      if (
+        complexity.score > this.config.remoteComplexityThreshold &&
+        this.config.enableRemoteCompute
+      ) {
+        location = "remote";
       } else {
-        location = 'local';
+        location = "local";
       }
     }
 
@@ -459,7 +474,7 @@ export class GeomCoreSDK {
     }
 
     // Execute based on location
-    if (location === 'remote' && this.remoteClient) {
+    if (location === "remote" && this.remoteClient) {
       try {
         const result = await this.remoteClient.executeRemote(operation, params);
         return {
@@ -469,7 +484,9 @@ export class GeomCoreSDK {
         };
       } catch (error) {
         // Fall back to local on remote failure
-        console.warn(`Remote execution failed, falling back to local: ${error}`);
+        console.warn(
+          `Remote execution failed, falling back to local: ${error}`,
+        );
       }
     }
 
@@ -492,10 +509,10 @@ export class GeomCoreSDK {
     const ids: string[] = [];
 
     const extractId = (value: unknown): void => {
-      if (typeof value === 'string' && value.startsWith('shape_')) {
+      if (typeof value === "string" && value.startsWith("shape_")) {
         ids.push(value);
-      } else if (typeof value === 'object' && value !== null) {
-        if ('id' in value && typeof (value as any).id === 'string') {
+      } else if (typeof value === "object" && value !== null) {
+        if ("id" in value && typeof (value as any).id === "string") {
           ids.push((value as any).id);
         }
       }
@@ -520,10 +537,7 @@ export class GeomCoreSDK {
    * Hint that an operation may be performed soon (e.g., user hovering over tool).
    * The SDK will speculatively execute and cache the result.
    */
-  precompute(
-    operation: string,
-    params: Record<string, unknown>
-  ): void {
+  precompute(operation: string, params: Record<string, unknown>): void {
     if (!this.config.enablePrecomputation) return;
 
     const cacheKey = this.precomputation.generateKey(operation, params);
@@ -542,10 +556,13 @@ export class GeomCoreSDK {
         try {
           const result = executor();
           if (result.success && result.value) {
-            this.precomputation.setCached(cacheKey, result.value as ShapeHandle);
+            this.precomputation.setCached(
+              cacheKey,
+              result.value as ShapeHandle,
+            );
             resolve(result.value as ShapeHandle);
           } else {
-            reject(new Error(result.error?.message || 'Precomputation failed'));
+            reject(new Error(result.error?.message || "Precomputation failed"));
           }
         } catch (error) {
           reject(error);
@@ -560,29 +577,38 @@ export class GeomCoreSDK {
    * Cancel a precomputation hint (e.g., user moved away from tool).
    */
   cancelPrecompute(operation: string, params: Record<string, unknown>): void {
-    const cacheKey = this.precomputation.generateKey(operation, params);
+    // Generate cache key for potential future use with cancellation tokens
+    const _cacheKey = this.precomputation.generateKey(operation, params);
     // Note: Can't actually cancel in-flight operations, but we can remove from pending
     // In a real implementation, we'd need cancellation tokens
+    void _cacheKey; // Suppress unused variable warning
   }
 
   private getOperationExecutor(
     operation: string,
-    params: Record<string, unknown>
+    params: Record<string, unknown>,
   ): (() => OperationResult<ShapeHandle>) | null {
     // Map operation names to engine methods
     const executors: Record<string, () => OperationResult<ShapeHandle>> = {
-      makeBox: () => this.engine.makeBox(params as BoxParams),
-      makeSphere: () => this.engine.makeSphere(params as SphereParams),
-      makeCylinder: () => this.engine.makeCylinder(params as CylinderParams),
-      makeCone: () => this.engine.makeCone(params as ConeParams),
-      makeTorus: () => this.engine.makeTorus(params as TorusParams),
-      booleanUnion: () => this.engine.booleanUnion(params as BooleanUnionParams),
-      booleanSubtract: () => this.engine.booleanSubtract(params as BooleanSubtractParams),
-      booleanIntersect: () => this.engine.booleanIntersect(params as BooleanIntersectParams),
-      extrude: () => this.engine.extrude(params as ExtrudeParams),
-      revolve: () => this.engine.revolve(params as RevolveParams),
-      fillet: () => this.engine.fillet(params as FilletParams),
-      chamfer: () => this.engine.chamfer(params as ChamferParams),
+      makeBox: () => this.engine.makeBox(params as unknown as BoxParams),
+      makeSphere: () =>
+        this.engine.makeSphere(params as unknown as SphereParams),
+      makeCylinder: () =>
+        this.engine.makeCylinder(params as unknown as CylinderParams),
+      makeCone: () => this.engine.makeCone(params as unknown as ConeParams),
+      makeTorus: () => this.engine.makeTorus(params as unknown as TorusParams),
+      booleanUnion: () =>
+        this.engine.booleanUnion(params as unknown as BooleanUnionParams),
+      booleanSubtract: () =>
+        this.engine.booleanSubtract(params as unknown as BooleanSubtractParams),
+      booleanIntersect: () =>
+        this.engine.booleanIntersect(
+          params as unknown as BooleanIntersectParams,
+        ),
+      extrude: () => this.engine.extrude(params as unknown as ExtrudeParams),
+      revolve: () => this.engine.revolve(params as unknown as RevolveParams),
+      fillet: () => this.engine.fillet(params as unknown as FilletParams),
+      chamfer: () => this.engine.chamfer(params as unknown as ChamferParams),
     };
 
     return executors[operation] || null;
@@ -594,7 +620,7 @@ export class GeomCoreSDK {
 
   estimateComplexity(
     operation: string,
-    shapeIds: string[]
+    shapeIds: string[],
   ): ComplexityEstimate {
     return this.engine.estimateComplexity(operation, shapeIds);
   }
@@ -603,48 +629,63 @@ export class GeomCoreSDK {
   // 3D Primitives (Always Local - <5ms)
   // ===========================================================================
 
-  async makeBox(params?: BoxParams, hint?: ComputeHint): Promise<OperationResult<ShapeHandle>> {
+  async makeBox(
+    params?: BoxParams,
+    hint?: ComputeHint,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.executeWithRouting(
-      'makeBox',
-      params || {},
+      "makeBox",
+      (params || {}) as Record<string, unknown>,
       () => this.engine.makeBox(params),
-      { ...hint, preferLocation: 'local' }
+      { ...hint, preferLocation: "local" },
     );
   }
 
-  async makeSphere(params?: SphereParams, hint?: ComputeHint): Promise<OperationResult<ShapeHandle>> {
+  async makeSphere(
+    params?: SphereParams,
+    hint?: ComputeHint,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.executeWithRouting(
-      'makeSphere',
-      params || {},
+      "makeSphere",
+      (params || {}) as Record<string, unknown>,
       () => this.engine.makeSphere(params),
-      { ...hint, preferLocation: 'local' }
+      { ...hint, preferLocation: "local" },
     );
   }
 
-  async makeCylinder(params?: CylinderParams, hint?: ComputeHint): Promise<OperationResult<ShapeHandle>> {
+  async makeCylinder(
+    params?: CylinderParams,
+    hint?: ComputeHint,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.executeWithRouting(
-      'makeCylinder',
-      params || {},
+      "makeCylinder",
+      (params || {}) as Record<string, unknown>,
       () => this.engine.makeCylinder(params),
-      { ...hint, preferLocation: 'local' }
+      { ...hint, preferLocation: "local" },
     );
   }
 
-  async makeCone(params?: ConeParams, hint?: ComputeHint): Promise<OperationResult<ShapeHandle>> {
+  async makeCone(
+    params?: ConeParams,
+    hint?: ComputeHint,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.executeWithRouting(
-      'makeCone',
-      params || {},
+      "makeCone",
+      (params || {}) as Record<string, unknown>,
       () => this.engine.makeCone(params),
-      { ...hint, preferLocation: 'local' }
+      { ...hint, preferLocation: "local" },
     );
   }
 
-  async makeTorus(params?: TorusParams, hint?: ComputeHint): Promise<OperationResult<ShapeHandle>> {
+  async makeTorus(
+    params?: TorusParams,
+    hint?: ComputeHint,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.executeWithRouting(
-      'makeTorus',
-      params || {},
+      "makeTorus",
+      (params || {}) as Record<string, unknown>,
       () => this.engine.makeTorus(params),
-      { ...hint, preferLocation: 'local' }
+      { ...hint, preferLocation: "local" },
     );
   }
 
@@ -652,30 +693,39 @@ export class GeomCoreSDK {
   // Boolean Operations (Auto-Routed)
   // ===========================================================================
 
-  async booleanUnion(params: BooleanUnionParams, hint?: ComputeHint): Promise<OperationResult<ShapeHandle>> {
+  async booleanUnion(
+    params: BooleanUnionParams,
+    hint?: ComputeHint,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.executeWithRouting(
-      'booleanUnion',
+      "booleanUnion",
       params as unknown as Record<string, unknown>,
       () => this.engine.booleanUnion(params),
-      hint
+      hint,
     );
   }
 
-  async booleanSubtract(params: BooleanSubtractParams, hint?: ComputeHint): Promise<OperationResult<ShapeHandle>> {
+  async booleanSubtract(
+    params: BooleanSubtractParams,
+    hint?: ComputeHint,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.executeWithRouting(
-      'booleanSubtract',
+      "booleanSubtract",
       params as unknown as Record<string, unknown>,
       () => this.engine.booleanSubtract(params),
-      hint
+      hint,
     );
   }
 
-  async booleanIntersect(params: BooleanIntersectParams, hint?: ComputeHint): Promise<OperationResult<ShapeHandle>> {
+  async booleanIntersect(
+    params: BooleanIntersectParams,
+    hint?: ComputeHint,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.executeWithRouting(
-      'booleanIntersect',
+      "booleanIntersect",
       params as unknown as Record<string, unknown>,
       () => this.engine.booleanIntersect(params),
-      hint
+      hint,
     );
   }
 
@@ -683,75 +733,99 @@ export class GeomCoreSDK {
   // Feature Operations (Auto-Routed)
   // ===========================================================================
 
-  async extrude(params: ExtrudeParams, hint?: ComputeHint): Promise<OperationResult<ShapeHandle>> {
+  async extrude(
+    params: ExtrudeParams,
+    hint?: ComputeHint,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.executeWithRouting(
-      'extrude',
+      "extrude",
       params as unknown as Record<string, unknown>,
       () => this.engine.extrude(params),
-      hint
+      hint,
     );
   }
 
-  async revolve(params: RevolveParams, hint?: ComputeHint): Promise<OperationResult<ShapeHandle>> {
+  async revolve(
+    params: RevolveParams,
+    hint?: ComputeHint,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.executeWithRouting(
-      'revolve',
+      "revolve",
       params as unknown as Record<string, unknown>,
       () => this.engine.revolve(params),
-      hint
+      hint,
     );
   }
 
-  async sweep(params: SweepParams, hint?: ComputeHint): Promise<OperationResult<ShapeHandle>> {
+  async sweep(
+    params: SweepParams,
+    hint?: ComputeHint,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.executeWithRouting(
-      'sweep',
+      "sweep",
       params as unknown as Record<string, unknown>,
       () => this.engine.sweep(params),
-      hint
+      hint,
     );
   }
 
-  async loft(params: LoftParams, hint?: ComputeHint): Promise<OperationResult<ShapeHandle>> {
+  async loft(
+    params: LoftParams,
+    hint?: ComputeHint,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.executeWithRouting(
-      'loft',
+      "loft",
       params as unknown as Record<string, unknown>,
       () => this.engine.loft(params),
-      hint
+      hint,
     );
   }
 
-  async fillet(params: FilletParams, hint?: ComputeHint): Promise<OperationResult<ShapeHandle>> {
+  async fillet(
+    params: FilletParams,
+    hint?: ComputeHint,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.executeWithRouting(
-      'fillet',
+      "fillet",
       params as unknown as Record<string, unknown>,
       () => this.engine.fillet(params),
-      hint
+      hint,
     );
   }
 
-  async chamfer(params: ChamferParams, hint?: ComputeHint): Promise<OperationResult<ShapeHandle>> {
+  async chamfer(
+    params: ChamferParams,
+    hint?: ComputeHint,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.executeWithRouting(
-      'chamfer',
+      "chamfer",
       params as unknown as Record<string, unknown>,
       () => this.engine.chamfer(params),
-      hint
+      hint,
     );
   }
 
-  async shell(params: ShellParams, hint?: ComputeHint): Promise<OperationResult<ShapeHandle>> {
+  async shell(
+    params: ShellParams,
+    hint?: ComputeHint,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.executeWithRouting(
-      'shell',
+      "shell",
       params as unknown as Record<string, unknown>,
       () => this.engine.shell(params),
-      hint
+      hint,
     );
   }
 
-  async offset(params: OffsetParams, hint?: ComputeHint): Promise<OperationResult<ShapeHandle>> {
+  async offset(
+    params: OffsetParams,
+    hint?: ComputeHint,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.executeWithRouting(
-      'offset',
+      "offset",
       params as unknown as Record<string, unknown>,
       () => this.engine.offset(params),
-      hint
+      hint,
     );
   }
 
@@ -759,7 +833,9 @@ export class GeomCoreSDK {
   // Transforms (Always Local - <2ms)
   // ===========================================================================
 
-  async translate(params: TranslateParams): Promise<OperationResult<ShapeHandle>> {
+  async translate(
+    params: TranslateParams,
+  ): Promise<OperationResult<ShapeHandle>> {
     return this.engine.translate(params);
   }
 
@@ -782,13 +858,16 @@ export class GeomCoreSDK {
   async tessellate(
     shapeId: string,
     options?: TessellateOptions,
-    hint?: ComputeHint
+    _hint?: ComputeHint,
   ): Promise<OperationResult<MeshData>> {
     // Tessellation is always local for responsiveness
+    // Note: _hint parameter reserved for future remote tessellation support
     return this.engine.tessellate(shapeId, options);
   }
 
-  async getProperties(shapeId: string): Promise<OperationResult<ShapeProperties>> {
+  async getProperties(
+    shapeId: string,
+  ): Promise<OperationResult<ShapeProperties>> {
     return this.engine.getProperties(shapeId);
   }
 
@@ -826,7 +905,7 @@ export class GeomCoreSDK {
 
 export function createGeomCoreSDK(
   engine: GeometryEngine,
-  config?: GeomCoreConfig
+  config?: GeomCoreConfig,
 ): GeomCoreSDK {
   return new GeomCoreSDK(engine, config);
 }
@@ -849,7 +928,7 @@ export function createBrowserSDK(engine: GeometryEngine): GeomCoreSDK {
 export function createPaidTierSDK(
   engine: GeometryEngine,
   remoteEndpoint: string,
-  apiKey: string
+  apiKey: string,
 ): GeomCoreSDK {
   return new GeomCoreSDK(engine, {
     enableRemoteCompute: true,

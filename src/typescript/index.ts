@@ -59,6 +59,7 @@ export type {
   ArcParams,
   PolygonParams,
   EllipseParams,
+  PointParams,
 
   // Parameter types - Booleans
   BooleanUnionParams,
@@ -93,17 +94,38 @@ export type {
   ComputeLocation,
   ComputeHint,
 
+  // I/O types
+  ImportFormat,
+  ExportFormat,
+  ImportParams,
+  ExportParams,
+  ExportOptions,
+  ImportResult,
+  ExportResult,
+
+  // Assembly types
+  AssemblyParams,
+  AssemblyHandle,
+  AssemblyPart,
+  PartTransform,
+  MateType,
+  MateParams,
+  MateConstraint,
+  PatternType,
+  PatternParams,
+  PatternResult,
+
   // WASM types (for advanced users)
   WASMModule,
   OCCTShape,
   OCCTHandle,
-} from './bindings/types';
+} from "./bindings/types";
 
 export {
   createHandleId,
   resetHandleIdCounter,
   getShapeId,
-} from './bindings/types';
+} from "./bindings/types";
 
 // =============================================================================
 // Core Engine
@@ -112,7 +134,7 @@ export {
 export {
   GeometryEngine,
   createGeometryEngine,
-} from './bindings/GeometryEngine';
+} from "./bindings/GeometryEngine";
 
 // =============================================================================
 // SDK
@@ -123,18 +145,18 @@ export type {
   RemoteJobStatus,
   SlowOperationCallback,
   MemoryPressureCallback,
-} from './sdk/GeomCoreSDK';
+} from "./sdk/GeomCoreSDK";
 
 export {
   GeomCoreSDK,
   createGeomCoreSDK,
   createBrowserSDK,
   createPaidTierSDK,
-} from './sdk/GeomCoreSDK';
+} from "./sdk/GeomCoreSDK";
 
 // =============================================================================
 // Version
 // =============================================================================
 
-export const VERSION = '0.1.0';
-export const OCCT_VERSION = '7.7.0';
+export const VERSION = "0.1.0";
+export const OCCT_VERSION = "7.7.0";

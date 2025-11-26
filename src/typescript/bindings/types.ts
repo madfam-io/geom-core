@@ -21,15 +21,15 @@ export interface BoundingBox {
 }
 
 export type ShapeType =
-  | 'solid'
-  | 'surface'
-  | 'curve'
-  | 'point'
-  | 'compound'
-  | 'wire'
-  | 'edge'
-  | 'face'
-  | 'shell';
+  | "solid"
+  | "surface"
+  | "curve"
+  | "point"
+  | "compound"
+  | "wire"
+  | "edge"
+  | "face"
+  | "shell";
 
 export interface ShapeHandle {
   id: string;
@@ -138,6 +138,12 @@ export interface EllipseParams {
   normal?: Vec3;
 }
 
+export interface PointParams {
+  x?: number;
+  y?: number;
+  z?: number;
+}
+
 // =============================================================================
 // Boolean Operation Parameters
 // =============================================================================
@@ -209,7 +215,7 @@ export interface DraftParams {
 export interface OffsetParams {
   shape: string | ShapeHandle;
   distance?: number;
-  join?: 'arc' | 'intersection';
+  join?: "arc" | "intersection";
 }
 
 // =============================================================================
@@ -222,10 +228,22 @@ export interface TransformParams {
 }
 
 export interface Matrix4x4Object {
-  m11?: number; m12?: number; m13?: number; m14?: number;
-  m21?: number; m22?: number; m23?: number; m24?: number;
-  m31?: number; m32?: number; m33?: number; m34?: number;
-  m41?: number; m42?: number; m43?: number; m44?: number;
+  m11?: number;
+  m12?: number;
+  m13?: number;
+  m14?: number;
+  m21?: number;
+  m22?: number;
+  m23?: number;
+  m24?: number;
+  m31?: number;
+  m32?: number;
+  m33?: number;
+  m34?: number;
+  m41?: number;
+  m42?: number;
+  m43?: number;
+  m44?: number;
 }
 
 export interface TranslateParams {
@@ -268,6 +286,129 @@ export interface ShapeProperties {
 }
 
 // =============================================================================
+// I/O Operation Parameters
+// =============================================================================
+
+export type ImportFormat = "step" | "iges" | "brep";
+export type ExportFormat = "step" | "stl" | "iges" | "obj" | "brep";
+
+export interface ImportParams {
+  data: string | ArrayBuffer;
+  format: ImportFormat;
+  filename?: string;
+}
+
+export interface ExportParams {
+  shape: string | ShapeHandle;
+  format: ExportFormat;
+  options?: ExportOptions;
+}
+
+export interface ExportOptions {
+  /** For STL: binary format (default: true) */
+  binary?: boolean;
+  /** For STL: mesh deflection (default: 0.1) */
+  deflection?: number;
+  /** For STEP: application name */
+  applicationName?: string;
+  /** For STEP: schema version */
+  schemaVersion?: string;
+}
+
+export interface ImportResult {
+  shapes: ShapeHandle[];
+  rootShape?: ShapeHandle;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ExportResult {
+  data: string | ArrayBuffer;
+  format: ExportFormat;
+  filename?: string;
+}
+
+// =============================================================================
+// Assembly Operation Parameters
+// =============================================================================
+
+export interface AssemblyParams {
+  name?: string;
+  parts?: (string | ShapeHandle)[];
+  visible?: boolean;
+}
+
+export interface AssemblyHandle {
+  id: string;
+  name: string;
+  parts: AssemblyPart[];
+  mates: MateConstraint[];
+  visible: boolean;
+  hash: string;
+}
+
+export interface AssemblyPart {
+  id: string;
+  type: string;
+  originalId?: string;
+  transform?: PartTransform;
+  patternInstance?: boolean;
+}
+
+export interface PartTransform {
+  translation: Vec3;
+  rotation: Vec3;
+  scale: number;
+}
+
+export type MateType =
+  | "coincident"
+  | "parallel"
+  | "perpendicular"
+  | "tangent"
+  | "concentric"
+  | "distance"
+  | "angle";
+
+export interface MateParams {
+  assembly: string | AssemblyHandle;
+  part1: string | ShapeHandle;
+  part2: string | ShapeHandle;
+  mateType?: MateType;
+  axis1?: Vec3;
+  axis2?: Vec3;
+  distance?: number;
+  angle?: number;
+}
+
+export interface MateConstraint {
+  id: string;
+  type: MateType;
+  part1: string;
+  part2: string;
+  axis1?: Vec3;
+  axis2?: Vec3;
+  distance?: number;
+  angle?: number;
+}
+
+export type PatternType = "linear" | "circular" | "rectangular";
+
+export interface PatternParams {
+  assembly: string | AssemblyHandle;
+  part: string | ShapeHandle;
+  patternType?: PatternType;
+  count?: number;
+  spacing?: number;
+  axis?: Vec3;
+  angle?: number;
+}
+
+export interface PatternResult {
+  assembly: AssemblyHandle;
+  instanceIds: string[];
+}
+
+// =============================================================================
 // Operation Result Types
 // =============================================================================
 
@@ -289,7 +430,7 @@ export interface OperationResult<T> {
 // Compute Routing Types (Zero-Lag Architecture)
 // =============================================================================
 
-export type ComputeLocation = 'local' | 'remote' | 'auto';
+export type ComputeLocation = "local" | "remote" | "auto";
 
 export interface ComputeHint {
   /** Preferred execution location */
@@ -328,19 +469,47 @@ export interface WASMModule {
   gp_Elips: new (axis: OCCTHandle, major: number, minor: number) => OCCTHandle;
 
   // Builder classes
-  BRepPrimAPI_MakeBox: new (width: number, height: number, depth: number) => OCCTBuilder;
-  BRepPrimAPI_MakeSphere: new (center: OCCTHandle, radius: number) => OCCTBuilder;
-  BRepPrimAPI_MakeCylinder: new (axis: OCCTHandle, radius: number, height: number) => OCCTBuilder;
-  BRepPrimAPI_MakeCone: new (axis: OCCTHandle, r1: number, r2: number, height: number) => OCCTBuilder;
-  BRepPrimAPI_MakeTorus: new (axis: OCCTHandle, major: number, minor: number) => OCCTBuilder;
+  BRepPrimAPI_MakeBox: new (
+    width: number,
+    height: number,
+    depth: number,
+  ) => OCCTBuilder;
+  BRepPrimAPI_MakeSphere: new (
+    center: OCCTHandle,
+    radius: number,
+  ) => OCCTBuilder;
+  BRepPrimAPI_MakeCylinder: new (
+    axis: OCCTHandle,
+    radius: number,
+    height: number,
+  ) => OCCTBuilder;
+  BRepPrimAPI_MakeCone: new (
+    axis: OCCTHandle,
+    r1: number,
+    r2: number,
+    height: number,
+  ) => OCCTBuilder;
+  BRepPrimAPI_MakeTorus: new (
+    axis: OCCTHandle,
+    major: number,
+    minor: number,
+  ) => OCCTBuilder;
   BRepPrimAPI_MakePrism: new (shape: OCCTShape, vec: OCCTVec3) => OCCTBuilder;
-  BRepPrimAPI_MakeRevol: new (shape: OCCTShape, axis: OCCTHandle, angle: number) => OCCTBuilder;
+  BRepPrimAPI_MakeRevol: new (
+    shape: OCCTShape,
+    axis: OCCTHandle,
+    angle: number,
+  ) => OCCTBuilder;
 
   // Edge and wire builders
   BRepBuilderAPI_MakeEdge: new (p1: OCCTHandle, p2: OCCTHandle) => OCCTBuilder;
   BRepBuilderAPI_MakeWire: new () => OCCTWireBuilder;
   BRepBuilderAPI_MakeVertex: new (pnt: OCCTHandle) => OCCTBuilder;
-  BRepBuilderAPI_Transform: new (shape: OCCTShape, trsf: OCCTHandle, copy: boolean) => OCCTBuilder;
+  BRepBuilderAPI_Transform: new (
+    shape: OCCTShape,
+    trsf: OCCTHandle,
+    copy: boolean,
+  ) => OCCTBuilder;
 
   // Boolean operations
   BRepAlgoAPI_Fuse: new (s1: OCCTShape, s2: OCCTShape) => OCCTBuilder;
@@ -350,7 +519,10 @@ export interface WASMModule {
   // Features
   BRepFilletAPI_MakeFillet: new (shape: OCCTShape) => OCCTFilletBuilder;
   BRepFilletAPI_MakeChamfer: new (shape: OCCTShape) => OCCTChamferBuilder;
-  BRepOffsetAPI_MakePipe: new (path: OCCTShape, profile: OCCTShape) => OCCTBuilder;
+  BRepOffsetAPI_MakePipe: new (
+    path: OCCTShape,
+    profile: OCCTShape,
+  ) => OCCTBuilder;
   BRepOffsetAPI_ThruSections: new (solid: boolean) => OCCTLoftBuilder;
   BRepOffsetAPI_MakeThickSolid: new () => OCCTShellBuilder;
   BRepOffsetAPI_DraftAngle: new (shape: OCCTShape) => OCCTDraftBuilder;
@@ -358,7 +530,11 @@ export interface WASMModule {
 
   // Geometry curves
   GC_MakeSegment: new (p1: OCCTHandle, p2: OCCTHandle) => OCCTGeomBuilder;
-  GC_MakeArcOfCircle: new (p1: OCCTHandle, p2: OCCTHandle, p3: OCCTHandle) => OCCTGeomBuilder;
+  GC_MakeArcOfCircle: new (
+    p1: OCCTHandle,
+    p2: OCCTHandle,
+    p3: OCCTHandle,
+  ) => OCCTGeomBuilder;
   GC_MakeEllipse: new (elips: OCCTHandle) => OCCTGeomBuilder;
 
   // Analysis
@@ -366,12 +542,22 @@ export interface WASMModule {
   BRepGProp: new () => OCCTPropsCalculator;
   Bnd_Box: new () => OCCTBndBox;
   BRepBndLib: new () => OCCTBndBuilder;
-  BRepMesh_IncrementalMesh: new (shape: OCCTShape, deflection: number, relative: boolean, angle: number) => OCCTMesher;
+  BRepMesh_IncrementalMesh: new (
+    shape: OCCTShape,
+    deflection: number,
+    relative: boolean,
+    angle: number,
+  ) => OCCTMesher;
 
   // Topology exploration
   TopExp_Explorer: new (shape: OCCTShape, type: number) => OCCTExplorer;
   TopoDS: { Face: (shape: OCCTShape) => OCCTShape };
-  BRep_Tool: { Triangulation: (face: OCCTShape, loc: OCCTHandle) => OCCTTriangulation | null };
+  BRep_Tool: {
+    Triangulation: (
+      face: OCCTShape,
+      loc: OCCTHandle,
+    ) => OCCTTriangulation | null;
+  };
   TopLoc_Location: new () => OCCTHandle;
   Poly_Triangulation: new () => OCCTTriangulation;
   TopTools_ListOfShape: new () => OCCTShapeList;
@@ -426,7 +612,12 @@ export interface OCCTLoftBuilder extends OCCTBuilder {
 }
 
 export interface OCCTShellBuilder extends OCCTBuilder {
-  MakeThickSolidByJoin(shape: OCCTShape, faces: OCCTShapeList, thickness: number, tolerance: number): void;
+  MakeThickSolidByJoin(
+    shape: OCCTShape,
+    faces: OCCTShapeList,
+    thickness: number,
+    tolerance: number,
+  ): void;
 }
 
 export interface OCCTDraftBuilder extends OCCTBuilder {
@@ -470,7 +661,10 @@ export interface OCCTExplorer extends OCCTHandle {
 export interface OCCTTriangulation extends OCCTHandle {
   IsNull(): boolean;
   Nodes(): { Length(): number; Value(i: number): OCCTHandle };
-  Triangles(): { Length(): number; Value(i: number): { Value(i: number): number } };
+  Triangles(): {
+    Length(): number;
+    Value(i: number): { Value(i: number): number };
+  };
 }
 
 export interface OCCTShapeList extends OCCTHandle {
@@ -483,7 +677,7 @@ export interface OCCTShapeList extends OCCTHandle {
 
 let handleIdCounter = 1;
 
-export function createHandleId(prefix: string = 'shape'): string {
+export function createHandleId(prefix: string = "shape"): string {
   return `${prefix}_${handleIdCounter++}`;
 }
 
@@ -492,5 +686,5 @@ export function resetHandleIdCounter(value: number = 1): void {
 }
 
 export function getShapeId(shapeOrId: string | ShapeHandle): string {
-  return typeof shapeOrId === 'string' ? shapeOrId : shapeOrId.id;
+  return typeof shapeOrId === "string" ? shapeOrId : shapeOrId.id;
 }
