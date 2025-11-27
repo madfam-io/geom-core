@@ -59,7 +59,7 @@
     "mesh"
   ],
   "author": "MadFam <contact@madfam.io>",
-  "license": "LGPL-2.1-only",
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/madfam-io/geom-core/issues"
   },
